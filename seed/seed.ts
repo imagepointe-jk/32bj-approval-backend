@@ -1,13 +1,27 @@
-import { prisma } from "./client";
+import { prisma } from "../client";
 import {
   testComment1,
   testComment2,
   testComment3,
   testComment4,
+  testUser1,
+  testUser2,
+  testUser3,
+  testUser4,
+  testUser5,
+  testUser6,
+  testUser7,
+  testUser8,
   testWcOrderId1,
   testWcOrderId2,
 } from "./seedData";
-import { ApprovalStatus, Role } from "./types";
+import { ApprovalStatus, Role } from "../types";
+import {
+  TestApprovals,
+  TestComments,
+  TestOrderData,
+  TestUsers,
+} from "./seedTypes";
 
 async function eraseDb() {
   console.log("Erasing");
@@ -19,6 +33,13 @@ async function eraseDb() {
 }
 
 async function createUser(name: string, email: string) {
+  const existingUser = await prisma.user.findUnique({
+    where: {
+      email,
+    },
+  });
+  if (existingUser) return existingUser;
+
   return await prisma.user.create({
     data: {
       name,
@@ -201,26 +222,11 @@ async function seedDb() {
 
   const workflow1 = await createTestWorkflow(
     {
-      artist: {
-        name: "John",
-        email: "john@example.com",
-      },
-      editor: {
-        name: "Jane",
-        email: "jane@site.com",
-      },
-      requester: {
-        name: "Steve",
-        email: "steve@example.com",
-      },
-      approver: {
-        name: "Nancy",
-        email: "nancy@site.com",
-      },
-      releaser: {
-        name: "Bob",
-        email: "bob@example.com",
-      },
+      artist: testUser1,
+      editor: testUser2,
+      requester: testUser3,
+      approver: testUser4,
+      releaser: testUser5,
     },
     {
       wcOrderId: testWcOrderId1,
@@ -244,26 +250,11 @@ async function seedDb() {
 
   const workflow2 = await createTestWorkflow(
     {
-      artist: {
-        name: "Bill",
-        email: "Bill@example.com",
-      },
-      editor: {
-        name: "Sue",
-        email: "Sue@site.com",
-      },
-      requester: {
-        name: "Rick",
-        email: "rick@example.com",
-      },
-      approver: {
-        name: "Meg",
-        email: "meg@site.com",
-      },
-      releaser: {
-        name: "Rob",
-        email: "rob@example.com",
-      },
+      artist: testUser1,
+      editor: testUser2,
+      requester: testUser4,
+      approver: testUser3,
+      releaser: testUser8,
     },
     {
       wcOrderId: testWcOrderId2,
@@ -291,37 +282,3 @@ eraseDb()
   .then(() => console.log("Done seeding"))
   .catch((e) => console.error(e))
   .finally(() => prisma.$disconnect());
-
-type TestUser = {
-  name: string;
-  email: string;
-};
-type TestUsers = {
-  artist: TestUser;
-  editor: TestUser;
-  requester: TestUser;
-  approver: TestUser;
-  releaser: TestUser;
-};
-type TestOrderData = {
-  wcOrderId: number;
-  accessCode: string;
-};
-type TestComment = {
-  text: string;
-  approvalStatus: ApprovalStatus;
-};
-type TestComments = {
-  artistComment?: TestComment;
-  editorComment?: TestComment;
-  requesterComment?: TestComment;
-  approverComment?: TestComment;
-  releaserComment?: TestComment;
-};
-type TestApprovals = {
-  artistApproval?: ApprovalStatus | null;
-  editorApproval?: ApprovalStatus | null;
-  requesterApproval?: ApprovalStatus | null;
-  approverApproval?: ApprovalStatus | null;
-  releaserApproval?: ApprovalStatus | null;
-};
