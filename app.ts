@@ -1,12 +1,27 @@
 import express, { json } from "express";
+import { prisma } from "./client";
+import { FORBIDDEN } from "./statusCodes";
+import { message } from "./utility";
 
 const app = express();
 app.use(json());
 
-//get order data
-app.get("/", (req, res) => {
-  console.log(req.body);
-  res.status(200).send();
+//get data associated with access code
+app.get("/:accessCode", async (req, res) => {
+  const orderWithAccessCode = await prisma.order.findFirst({
+    where: {
+      accessCode: req.params.accessCode,
+    },
+    include: {
+      users: true,
+    },
+  });
+
+  if (!orderWithAccessCode) {
+    return res.status(FORBIDDEN).send(message("Invalid access code"));
+  }
+
+  res.status(200).send(orderWithAccessCode);
 });
 
 //receive webhook from WooCommerce

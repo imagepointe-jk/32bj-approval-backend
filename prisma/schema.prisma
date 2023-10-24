@@ -11,31 +11,50 @@ datasource db {
 }
 
 model User {
-  id             Int         @id @default(autoincrement())
-  name           String
-  email          String
-  role           String
-  approvalStatus String
-  orders         UserOrder[]
+  id               Int            @id @default(autoincrement())
+  name             String
+  email            String         @unique
+  orders           Order[]
+  comments         Comment[]
+  approvalStatuses UserApproval[]
+  roles            UserRole[]
 }
 
 model Comment {
-  id        Int @id @default(autoincrement())
-  wcOrderId Int
+  id             Int      @id @default(autoincrement())
+  user           User     @relation(fields: [userId], references: [id])
+  userId         Int
+  order          Order    @relation(fields: [orderId], references: [id])
+  orderId        Int
+  text           String
+  approvalStatus String
+  dateCreated    DateTime
 }
 
 model Order {
-  id         Int         @id @default(autoincrement())
-  wcOrderId  Int
-  accessCode String
-  users      UserOrder[]
+  id               Int            @id @default(autoincrement())
+  wcOrderId        Int
+  accessCode       String         @unique
+  users            User[]
+  comments         Comment[]
+  approvalStatuses UserApproval[]
+  roles            UserRole[]
 }
 
-model UserOrder {
-  id        Int   @id @default(autoincrement())
-  user      User  @relation(fields: [userId], references: [id])
-  userId    Int
-  order     Order @relation(fields: [orderId], references: [id])
-  orderId   Int
-  wcOrderId Int
+model UserApproval {
+  id             Int    @id @default(autoincrement())
+  user           User   @relation(fields: [userId], references: [id])
+  userId         Int
+  order          Order  @relation(fields: [orderId], references: [id])
+  orderId        Int
+  approvalStatus String
+}
+
+model UserRole {
+  id      Int    @id @default(autoincrement())
+  user    User   @relation(fields: [userId], references: [id])
+  userId  Int
+  order   Order  @relation(fields: [orderId], references: [id])
+  orderId Int
+  role    String
 }
