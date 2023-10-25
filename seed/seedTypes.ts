@@ -1,4 +1,4 @@
-import { ApprovalStatus } from "../types";
+import { ApprovalStatus } from "../sharedTypes";
 
 export type TestUser = {
   name: string;

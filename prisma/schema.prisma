@@ -14,10 +14,10 @@ model User {
   id               Int            @id @default(autoincrement())
   name             String
   email            String         @unique
-  orders           Order[]
   comments         Comment[]
   approvalStatuses UserApproval[]
   roles            UserRole[]
+  accessCodes      AccessCode[]
 }
 
 model Comment {
@@ -34,11 +34,19 @@ model Comment {
 model Order {
   id               Int            @id @default(autoincrement())
   wcOrderId        Int
-  accessCode       String         @unique
-  users            User[]
   comments         Comment[]
   approvalStatuses UserApproval[]
   roles            UserRole[]
+  accessCodes      AccessCode[]
+}
+
+model AccessCode {
+  id      Int    @id @default(autoincrement())
+  user    User   @relation(fields: [userId], references: [id])
+  userId  Int
+  order   Order  @relation(fields: [orderId], references: [id])
+  orderId Int
+  code    String @unique
 }
 
 model UserApproval {

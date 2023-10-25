@@ -1,27 +1,41 @@
 import express, { json } from "express";
 import { prisma } from "./client";
-import { FORBIDDEN } from "./statusCodes";
+import { FORBIDDEN, OK } from "./statusCodes";
 import { message } from "./utility";
+import { fetchWooCommerceOrder } from "./fetch";
 
 const app = express();
 app.use(json());
 
+//TODO: validate all inputs (like zod middleware would do)
+
 //get data associated with access code
-app.get("/:accessCode", async (req, res) => {
-  const orderWithAccessCode = await prisma.order.findFirst({
+app.get("/access-codes/:code", async (req, res) => {
+  const code = req.params.code;
+  const accessCode = await prisma.accessCode.findUnique({
     where: {
-      accessCode: req.params.accessCode,
+      code,
     },
     include: {
-      users: true,
+      user: true,
+      order: true,
     },
   });
 
-  if (!orderWithAccessCode) {
-    return res.status(FORBIDDEN).send(message("Invalid access code"));
+  if (!accessCode) {
+    return res.status(FORBIDDEN).send(message("Invalid access code."));
   }
 
-  res.status(200).send(orderWithAccessCode);
+  const fetchOrderResult = await fetchWooCommerceOrder(
+    accessCode.order.wcOrderId
+  );
+  if (fetchOrderResult.statusCode !== OK) {
+    res
+      .status(fetchOrderResult.statusCode)
+      .send(message(fetchOrderResult.message));
+  }
+
+  res.status(OK).send(fetchOrderResult.data);
 });
 
 //receive webhook from WooCommerce
@@ -34,5 +48,5 @@ app.post("/", (req, res) => {
   res.status(200).send();
 });
 
-const port = process.env.PORT;
-app.listen(port || 3000, () => console.log(`Listening on port ${port}`));
+const port = process.env.PORT || 3000;
+app.listen(port, () => console.log(`Listening on port ${port}`));

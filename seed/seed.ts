@@ -15,13 +15,14 @@ import {
   testWcOrderId1,
   testWcOrderId2,
 } from "./seedData";
-import { ApprovalStatus, Role } from "../types";
+import { ApprovalStatus, Role } from "../sharedTypes";
 import {
   TestApprovals,
   TestComments,
   TestOrderData,
   TestUsers,
 } from "./seedTypes";
+import { v4 as uuidv4 } from "uuid";
 
 async function eraseDb() {
   console.log("Erasing");
@@ -48,18 +49,10 @@ async function createUser(name: string, email: string) {
   });
 }
 
-async function createOrder(
-  wcOrderId: number,
-  accessCode: string,
-  userIds: number[]
-) {
+async function createOrder(wcOrderId: number) {
   return await prisma.order.create({
     data: {
-      accessCode,
       wcOrderId,
-      users: {
-        connect: userIds.map((id) => ({ id })),
-      },
     },
   });
 }
@@ -106,6 +99,16 @@ async function createRole(userId: number, orderId: number, role: Role) {
   });
 }
 
+async function createAccessCode(userId: number, orderId: number) {
+  return await prisma.accessCode.create({
+    data: {
+      userId,
+      orderId,
+      code: uuidv4(),
+    },
+  });
+}
+
 async function createTestWorkflow(
   users: TestUsers,
   orderData: TestOrderData,
@@ -121,19 +124,19 @@ async function createTestWorkflow(
   const approver = await createUser(users.approver.name, users.approver.email);
   const releaser = await createUser(users.releaser.name, users.releaser.email);
 
-  const order = await createOrder(orderData.wcOrderId, orderData.accessCode, [
-    artist.id,
-    editor.id,
-    requester.id,
-    approver.id,
-    releaser.id,
-  ]);
+  const order = await createOrder(orderData.wcOrderId);
 
   await createRole(artist.id, order.id, "artist");
   await createRole(editor.id, order.id, "editor");
   await createRole(requester.id, order.id, "requester");
   await createRole(approver.id, order.id, "approver");
   await createRole(releaser.id, order.id, "releaser");
+
+  await createAccessCode(artist.id, order.id);
+  await createAccessCode(editor.id, order.id);
+  await createAccessCode(requester.id, order.id);
+  await createAccessCode(approver.id, order.id);
+  await createAccessCode(releaser.id, order.id);
 
   const {
     artistComment,
