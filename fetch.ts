@@ -1,11 +1,11 @@
 import { SERVER_ERROR } from "./constants";
-import { FetchResult } from "./types";
+import { ServerOperationResult, WooCommerceOrderData } from "./types";
 import { INTERNAL_SERVER_ERROR, OK } from "./statusCodes";
 import { parseWooCommerceOrderJson } from "./validations";
 
 export async function fetchWooCommerceOrder(
   orderId: number
-): Promise<FetchResult> {
+): Promise<ServerOperationResult & { data?: WooCommerceOrderData }> {
   const wooCommerceKey = process.env.WOO_32BJ_KEY;
   const wooCommerceSecret = process.env.WOO_32BJ_SECRET;
   const url = process.env.WOO_32BJ_API_URL;

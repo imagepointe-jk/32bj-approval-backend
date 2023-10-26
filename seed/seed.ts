@@ -1,4 +1,6 @@
+import { v4 as uuidv4 } from "uuid";
 import { prisma } from "../client";
+import { ApprovalStatus, Role } from "../sharedTypes";
 import {
   testComment1,
   testComment2,
@@ -9,26 +11,23 @@ import {
   testUser3,
   testUser4,
   testUser5,
-  testUser6,
-  testUser7,
   testUser8,
   testWcOrderId1,
   testWcOrderId2,
 } from "./seedData";
-import { ApprovalStatus, Role } from "../sharedTypes";
 import {
   TestApprovals,
   TestComments,
   TestOrderData,
   TestUsers,
 } from "./seedTypes";
-import { v4 as uuidv4 } from "uuid";
 
 async function eraseDb() {
   console.log("Erasing");
   await prisma.comment.deleteMany();
   await prisma.userApproval.deleteMany();
   await prisma.userRole.deleteMany();
+  await prisma.accessCode.deleteMany();
   await prisma.user.deleteMany();
   await prisma.order.deleteMany();
 }

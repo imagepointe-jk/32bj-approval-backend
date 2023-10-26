@@ -1,8 +1,9 @@
 import express, { json } from "express";
-import { prisma } from "./client";
-import { FORBIDDEN, OK } from "./statusCodes";
-import { message } from "./utility";
+import { getDataForAccessCode } from "./dbLogic";
 import { fetchWooCommerceOrder } from "./fetch";
+import { WorkflowData } from "./sharedTypes";
+import { OK } from "./statusCodes";
+import { message } from "./utility";
 
 const app = express();
 app.use(json());
@@ -10,32 +11,37 @@ app.use(json());
 //TODO: validate all inputs (like zod middleware would do)
 
 //get data associated with access code
-app.get("/access-codes/:code", async (req, res) => {
-  const code = req.params.code;
-  const accessCode = await prisma.accessCode.findUnique({
-    where: {
-      code,
-    },
-    include: {
-      user: true,
-      order: true,
-    },
-  });
-
-  if (!accessCode) {
-    return res.status(FORBIDDEN).send(message("Invalid access code."));
+app.get("/workflow/:accessCode", async (req, res) => {
+  const accessCode = req.params.accessCode;
+  //use the access code to figure out what user and order we're viewing
+  //this comes from our db
+  const {
+    message: userDataErrorMessage,
+    statusCode,
+    data,
+  } = await getDataForAccessCode(accessCode);
+  if (statusCode !== OK || data === undefined) {
+    return res.status(statusCode).send(message(userDataErrorMessage));
   }
 
-  const fetchOrderResult = await fetchWooCommerceOrder(
-    accessCode.order.wcOrderId
-  );
-  if (fetchOrderResult.statusCode !== OK) {
-    res
+  //use the WC order id found with the access code to get more order data
+  const { userData, wcOrderId } = data;
+  const fetchOrderResult = await fetchWooCommerceOrder(wcOrderId);
+  const fetchedOrderData = fetchOrderResult.data;
+  if (fetchOrderResult.statusCode !== OK || !fetchedOrderData) {
+    return res
       .status(fetchOrderResult.statusCode)
       .send(message(fetchOrderResult.message));
   }
 
-  res.status(OK).send(fetchOrderResult.data);
+  const workflowData: WorkflowData = {
+    wcOrderId,
+    orderTotal: fetchedOrderData.total,
+    users: userData.users,
+    activeUser: userData.activeUser,
+  };
+
+  res.status(OK).send(workflowData);
 });
 
 //receive webhook from WooCommerce

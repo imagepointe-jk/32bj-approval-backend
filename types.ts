@@ -1,11 +1,5 @@
 import { z } from "zod";
 
-export type FetchResult = {
-  statusCode: number;
-  message: string;
-  data?: any;
-};
-
 const numberInString = z.string().transform((val, ctx) => {
   const parsed = +val;
   if (isNaN(parsed)) {
@@ -19,12 +13,17 @@ const numberInString = z.string().transform((val, ctx) => {
   return parsed;
 });
 
-export const intParseableString = z
-  .string()
-  .refine((str) => !isNaN(parseInt(str)));
-
 //WC returns a lot of order data. only include what's necessary in the schema.
-export const wooCommerceOrderResponseSchema = z.object({
+export const wooCommerceOrderDataSchema = z.object({
   id: z.number(),
   total: numberInString,
 });
+
+//Represents any operation done by the server that might result in an error.
+//Useful for returning from a function where something might go wrong, and keeping track of what went wrong.
+export type ServerOperationResult = {
+  statusCode: number;
+  message: string;
+};
+
+export type WooCommerceOrderData = z.infer<typeof wooCommerceOrderDataSchema>;
