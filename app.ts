@@ -35,8 +35,10 @@ app.get("/workflow/:accessCode", async (req, res) => {
   }
 
   const workflowData: WorkflowData = {
-    wcOrderId,
-    orderTotal: fetchedOrderData.total,
+    id: fetchedOrderData.id,
+    lineItems: fetchedOrderData.lineItems,
+    total: fetchedOrderData.total,
+    totalTax: fetchedOrderData.totalTax,
     users: userData.users,
     activeUser: userData.activeUser,
   };

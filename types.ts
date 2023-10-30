@@ -1,6 +1,7 @@
 import { z } from "zod";
+import { wooCommerceOrderDataSchema } from "./sharedTypes";
 
-const numberInString = z.string().transform((val, ctx) => {
+export const numberInString = z.string().transform((val, ctx) => {
   const parsed = +val;
   if (isNaN(parsed)) {
     ctx.addIssue({
@@ -11,12 +12,6 @@ const numberInString = z.string().transform((val, ctx) => {
     return z.NEVER;
   }
   return parsed;
-});
-
-//WC returns a lot of order data. only include what's necessary in the schema.
-export const wooCommerceOrderDataSchema = z.object({
-  id: z.number(),
-  total: numberInString,
 });
 
 //Represents any operation done by the server that might result in an error.
