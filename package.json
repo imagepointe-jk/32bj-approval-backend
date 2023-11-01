@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "seed": "npx ts-node ./seed/seed.ts",
-    "server": "npx nodemon app.ts"
+    "server": "npx nodemon app.ts",
+    "migrate": "npx prisma migrate deploy"
   },
   "keywords": [],
   "author": "",
