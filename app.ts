@@ -41,8 +41,6 @@ app.get("/workflow/:accessCode", async (req, res) => {
     total: fetchedOrderData.total,
     totalTax: fetchedOrderData.totalTax,
     userData,
-    // users: userData.users,
-    // activeUser: userData.activeUser,
   };
 
   res.status(OK).send(workflowData);
