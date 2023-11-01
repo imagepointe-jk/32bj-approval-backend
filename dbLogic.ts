@@ -1,13 +1,20 @@
 import { prisma } from "./client";
 import { SERVER_ERROR } from "./constants";
-import { ApprovalStatus, UserPerOrder, WorkflowUserData } from "./sharedTypes";
+import {
+  ApprovalStatus,
+  DataForAccessCode,
+  UserPerOrder,
+  WorkflowUserData,
+  organizationNameSchema,
+} from "./sharedTypes";
 import { FORBIDDEN, INTERNAL_SERVER_ERROR, OK } from "./statusCodes";
 import { ServerOperationResult } from "./types";
 import { parseApprovalStatus, parseRole } from "./validations";
 
+//get relevant data from OUR db (not WooCommerce) related to an access code
 export async function getDataForAccessCode(accessCode: string): Promise<
   ServerOperationResult & {
-    data?: { userData: WorkflowUserData; wcOrderId: number };
+    data?: DataForAccessCode;
   }
 > {
   //Check if valid access code
@@ -17,7 +24,11 @@ export async function getDataForAccessCode(accessCode: string): Promise<
     },
     include: {
       user: true,
-      order: true,
+      order: {
+        include: {
+          organization: true,
+        },
+      },
     },
   });
 
@@ -43,10 +54,14 @@ export async function getDataForAccessCode(accessCode: string): Promise<
     },
   });
 
-  //Look through the users, roles, etc. for this order. Build user data objects that will be easy for the front end to use.
-  //While looping, also pull out the role and approval status for the user associated with the access code.
-  //If any bad strings are found for role or approval, it's caught here.
   try {
+    const organizationName = organizationNameSchema.parse(
+      activeOrder.organization.name
+    );
+
+    //Look through the users, roles, etc. for this order. Build user data objects that will be easy for the front end to use.
+    //While looping, also pull out the role and approval status for the user associated with the access code.
+    //If any bad strings are found for role or approval, it's caught here.
     let activeUserData: UserPerOrder | undefined = undefined;
     const relevantDataPerUser = userRolesThisOrder.map((roleEntry) => {
       const role = parseRole(roleEntry.role);
@@ -82,9 +97,11 @@ export async function getDataForAccessCode(accessCode: string): Promise<
       data: {
         userData: { users: relevantDataPerUser, activeUser: activeUserData },
         wcOrderId: activeOrder.wcOrderId,
+        organizationName: organizationName,
       },
     };
   } catch (error) {
+    console.error(error);
     return {
       message: SERVER_ERROR,
       statusCode: INTERNAL_SERVER_ERROR,

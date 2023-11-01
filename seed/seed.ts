@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { prisma } from "../client";
-import { ApprovalStatus, Role } from "../sharedTypes";
+import { ApprovalStatus, OrganizationName, Role } from "../sharedTypes";
 import {
   testComment1,
   testComment2,
@@ -21,16 +21,7 @@ import {
   TestOrderData,
   TestUsers,
 } from "./seedTypes";
-
-async function eraseDb() {
-  console.log("Erasing");
-  await prisma.comment.deleteMany();
-  await prisma.userApproval.deleteMany();
-  await prisma.userRole.deleteMany();
-  await prisma.accessCode.deleteMany();
-  await prisma.user.deleteMany();
-  await prisma.order.deleteMany();
-}
+import { eraseDb } from "./eraseDb";
 
 async function createUser(name: string, email: string) {
   const existingUser = await prisma.user.findUnique({
@@ -48,10 +39,11 @@ async function createUser(name: string, email: string) {
   });
 }
 
-async function createOrder(wcOrderId: number) {
+async function createOrder(wcOrderId: number, organizationId: number) {
   return await prisma.order.create({
     data: {
       wcOrderId,
+      organizationId
     },
   });
 }
@@ -108,6 +100,14 @@ async function createAccessCode(userId: number, orderId: number) {
   });
 }
 
+async function createOrganization(name: OrganizationName) {
+  return await prisma.organization.create({
+    data: {
+      name
+    }
+  })
+}
+
 async function createTestWorkflow(
   users: TestUsers,
   orderData: TestOrderData,
@@ -123,7 +123,7 @@ async function createTestWorkflow(
   const approver = await createUser(users.approver.name, users.approver.email);
   const releaser = await createUser(users.releaser.name, users.releaser.email);
 
-  const order = await createOrder(orderData.wcOrderId);
+  const order = await createOrder(orderData.wcOrderId, orderData.organizationId);
 
   await createRole(artist.id, order.id, "artist");
   await createRole(editor.id, order.id, "editor");
@@ -222,6 +222,9 @@ async function createTestWorkflow(
 async function seedDb() {
   console.log("Seeding");
 
+  const organization1 = await createOrganization("32bj");
+  const organization2 = await createOrganization("RandomTest");
+
   const workflow1 = await createTestWorkflow(
     {
       artist: testUser1,
@@ -233,6 +236,7 @@ async function seedDb() {
     {
       wcOrderId: testWcOrderId1,
       accessCode: "sdhfkay213987hk",
+      organizationId: organization1.id
     },
     {
       requesterComment: {
@@ -261,6 +265,7 @@ async function seedDb() {
     {
       wcOrderId: testWcOrderId2,
       accessCode: "hsjf798324jsfd",
+      organizationId: organization2.id
     },
     {
       requesterComment: {

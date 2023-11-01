@@ -38,8 +38,11 @@ model Order {
   approvalStatuses UserApproval[]
   roles            UserRole[]
   accessCodes      AccessCode[]
+  organization     Organization   @relation(fields: [organizationId], references: [id])
+  organizationId   Int
 }
 
+//This also acts as a junction table for User <-> Order
 model AccessCode {
   id      Int    @id @default(autoincrement())
   user    User   @relation(fields: [userId], references: [id])
@@ -65,4 +68,10 @@ model UserRole {
   order   Order  @relation(fields: [orderId], references: [id])
   orderId Int
   role    String
+}
+
+model Organization {
+  id     Int     @id @default(autoincrement())
+  name   String  @unique
+  orders Order[]
 }

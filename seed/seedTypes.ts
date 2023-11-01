@@ -1,4 +1,4 @@
-import { ApprovalStatus } from "../sharedTypes";
+import { ApprovalStatus, OrganizationName } from "../sharedTypes";
 
 export type TestUser = {
   name: string;
@@ -14,6 +14,7 @@ export type TestUsers = {
 export type TestOrderData = {
   wcOrderId: number;
   accessCode: string;
+  organizationId: number;
 };
 export type TestComment = {
   text: string;

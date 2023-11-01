@@ -14,6 +14,10 @@ export const approvalStatuses = [
   "cancel",
   "revise",
 ] as const;
+export const organizationNames = [
+  "32bj",
+  "RandomTest"
+] as const;
 //#endregion
 
 //#region woo commerce schema
@@ -55,7 +59,13 @@ export const workflowUserDataSchema = z.object({
 export const workflowDataSchema = z.intersection(
   wooCommerceOrderDataSchema,
   workflowUserDataSchema
-);
+  );
+  export const organizationNameSchema = z.enum(organizationNames);
+export const dataForAccessCodeSchema = z.object({
+  userData: workflowUserDataSchema,
+  wcOrderId: z.number(),
+  organizationName: organizationNameSchema
+})
 //#endregion
 
 export type Role = z.infer<typeof roleSchema>;
@@ -63,5 +73,7 @@ export type ApprovalStatus = z.infer<typeof approvalStatusSchema>;
 export type WorkflowUserData = z.infer<typeof workflowUserDataSchema>;
 export type WorkflowData = z.infer<typeof workflowDataSchema>;
 export type UserPerOrder = z.infer<typeof userPerOrderSchema>;
+export type DataForAccessCode = z.infer<typeof dataForAccessCodeSchema>;
+export type OrganizationName = z.infer<typeof organizationNameSchema>;
 
 export type WooCommerceLineItem = z.infer<typeof wooCommerceLineItemSchema>;
