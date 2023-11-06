@@ -4,9 +4,10 @@ import { fetchWooCommerceOrder } from "./fetch";
 import { WorkflowData } from "./sharedTypes";
 import { OK } from "./statusCodes";
 import { message } from "./utility";
+import * as crypto from "crypto";
 
 const app = express();
-app.use(json());
+// app.use(json());
 
 //TODO: validate all inputs (like zod middleware would do)
 
@@ -51,9 +52,14 @@ app.post("/", (req, res) => {
   console.log("Received request==============");
   console.log("headers:");
   console.log(req.headers);
-  console.log("body:");
-  console.log(req.body);
-  res.status(200).send();
+  const secret = process.env.WOO_WEBHOOK_SECRET!;
+  const payload = JSON.stringify(req.body);
+  const hash = crypto
+    .createHmac("sha256", secret)
+    .update(payload)
+    .digest("base64");
+  console.log("Hash: " + hash);
+  console.log("Received signature: " + req.headers["x-wc-webhook-signature"]);
 });
 
 const port = process.env.PORT || 3000;
