@@ -53,7 +53,9 @@ app.post("/", (req, res) => {
   console.log("headers:");
   console.log(req.headers);
   const secret = process.env.WOO_WEBHOOK_SECRET!;
+  console.log("Secret: " + secret);
   const payload = JSON.stringify(req.body);
+  console.log("Payload: " + payload);
   const hash = crypto
     .createHmac("sha256", secret)
     .update(payload)
