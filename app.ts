@@ -12,7 +12,7 @@ const app = express();
 //TODO: validate all inputs (like zod middleware would do)
 
 //get data associated with access code
-app.get("/workflow/:accessCode", async (req, res) => {
+app.get("/workflow/:accessCode", express.json(), async (req, res) => {
   const accessCode = req.params.accessCode;
   //use the access code to figure out what user and order we're viewing
   //this comes from our db
@@ -48,23 +48,54 @@ app.get("/workflow/:accessCode", async (req, res) => {
 });
 
 //receive webhook from WooCommerce
-app.post("/", (req, res) => {
-  console.log("Received request==============");
-  console.log(req);
-  // console.log("headers:");
-  // console.log(req.headers);
-  // const secret = process.env.WOO_WEBHOOK_SECRET!;
-  // console.log("Secret: " + secret);
-  // const payload = JSON.stringify(req.rawBody);
-  // console.log("Payload: " + payload);
-  // const hash = crypto
-  //   .createHmac("sha256", secret)
-  //   .update(payload)
-  //   .digest("base64");
-  // console.log("Hash: " + hash);
-  // console.log("Received signature: " + req.headers["x-wc-webhook-signature"]);
-  res.status(200).send();
-});
+app.post(
+  "/",
+  (req, res, next) => {
+    (req as any).rawBody = "";
+
+    req.on("data", (chunk) => {
+      (req as any).rawBody += chunk;
+    });
+
+    req.on("end", () => {
+      next();
+    });
+  },
+  (req, res) => {
+    console.log("Received request==============");
+    console.log((req as any).rawBody);
+    console.log("Headers: ");
+    console.log(req.headers);
+    const payload = JSON.stringify((req as any).rawBody);
+    console.log("payload: " + payload);
+    const secret = process.env.WOO_WEBHOOK_SECRET!;
+    try {
+      const hash = crypto
+        .createHmac("sha256", secret)
+        .update(payload)
+        .digest("base64");
+      console.log("Hash: " + hash);
+      console.log(
+        "Received signature: " + req.headers["x-wc-webhook-signature"]
+      );
+    } catch (error) {
+      res.status(200).send();
+    }
+    // console.log("headers:");
+    // console.log(req.headers);
+    // const secret = process.env.WOO_WEBHOOK_SECRET!;
+    // console.log("Secret: " + secret);
+    // const payload = JSON.stringify(req.rawBody);
+    // console.log("Payload: " + payload);
+    // const hash = crypto
+    //   .createHmac("sha256", secret)
+    //   .update(payload)
+    //   .digest("base64");
+    // console.log("Hash: " + hash);
+    // console.log("Received signature: " + req.headers["x-wc-webhook-signature"]);
+    res.status(200).send();
+  }
+);
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`Listening on port ${port}`));
