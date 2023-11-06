@@ -50,18 +50,20 @@ app.get("/workflow/:accessCode", async (req, res) => {
 //receive webhook from WooCommerce
 app.post("/", (req, res) => {
   console.log("Received request==============");
-  console.log("headers:");
-  console.log(req.headers);
-  const secret = process.env.WOO_WEBHOOK_SECRET!;
-  console.log("Secret: " + secret);
-  const payload = JSON.stringify(req.body);
-  console.log("Payload: " + payload);
-  const hash = crypto
-    .createHmac("sha256", secret)
-    .update(payload)
-    .digest("base64");
-  console.log("Hash: " + hash);
-  console.log("Received signature: " + req.headers["x-wc-webhook-signature"]);
+  console.log(req);
+  // console.log("headers:");
+  // console.log(req.headers);
+  // const secret = process.env.WOO_WEBHOOK_SECRET!;
+  // console.log("Secret: " + secret);
+  // const payload = JSON.stringify(req.rawBody);
+  // console.log("Payload: " + payload);
+  // const hash = crypto
+  //   .createHmac("sha256", secret)
+  //   .update(payload)
+  //   .digest("base64");
+  // console.log("Hash: " + hash);
+  // console.log("Received signature: " + req.headers["x-wc-webhook-signature"]);
+  res.status(200).send();
 });
 
 const port = process.env.PORT || 3000;
