@@ -4,6 +4,7 @@ import { fetchWooCommerceOrder } from "./fetch";
 import { WorkflowData } from "./sharedTypes";
 import { OK } from "./statusCodes";
 import { message } from "./utility";
+import { sendEmail } from "./mail/mail";
 
 const app = express();
 app.use(json());
@@ -53,6 +54,11 @@ app.post("/", (req, res) => {
   console.log(req.headers);
   console.log("body:");
   console.log(req.body);
+  sendEmail(
+    "josh.klope@imagepointe.com",
+    "Test email",
+    "This is a test webhook email"
+  );
   res.status(200).send();
 });
 
