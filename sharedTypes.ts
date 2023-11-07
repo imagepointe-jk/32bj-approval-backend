@@ -14,7 +14,7 @@ export const approvalStatuses = [
   "cancel",
   "revise",
 ] as const;
-export const organizationNames = ["32bj", "RandomTest"] as const;
+export const organizationNames = ["32BJ", "RandomTest"] as const;
 //#endregion
 
 //#region woo commerce schema

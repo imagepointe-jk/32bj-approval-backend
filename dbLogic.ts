@@ -3,6 +3,8 @@ import { SERVER_ERROR } from "./constants";
 import {
   ApprovalStatus,
   DataForAccessCode,
+  OrganizationName,
+  Role,
   UserPerOrder,
   WorkflowUserData,
   organizationNameSchema,
@@ -10,6 +12,7 @@ import {
 import { FORBIDDEN, INTERNAL_SERVER_ERROR, OK } from "./statusCodes";
 import { ServerOperationResult } from "./types";
 import { parseApprovalStatus, parseRole } from "./validations";
+import { v4 as uuidv4 } from "uuid";
 
 //get relevant data from OUR db (not WooCommerce) related to an access code
 export async function getDataForAccessCode(accessCode: string): Promise<
@@ -107,4 +110,96 @@ export async function getDataForAccessCode(accessCode: string): Promise<
       statusCode: INTERNAL_SERVER_ERROR,
     };
   }
+}
+
+export async function createUser(name: string, email: string) {
+  const existingUser = await prisma.user.findUnique({
+    where: {
+      email,
+    },
+  });
+  if (existingUser) return existingUser;
+
+  return await prisma.user.create({
+    data: {
+      name,
+      email,
+    },
+  });
+}
+
+export async function createOrder(wcOrderId: number, organizationId: number) {
+  return await prisma.order.create({
+    data: {
+      wcOrderId,
+      organizationId,
+    },
+  });
+}
+
+export async function createComment(
+  text: string,
+  userId: number,
+  orderId: number,
+  approvalStatus: ApprovalStatus,
+  dateCreated: Date
+) {
+  return await prisma.comment.create({
+    data: {
+      userId,
+      orderId,
+      approvalStatus,
+      dateCreated,
+      text,
+    },
+  });
+}
+
+export async function createApproval(
+  userId: number,
+  orderId: number,
+  approvalStatus: ApprovalStatus
+) {
+  return await prisma.userApproval.create({
+    data: {
+      userId,
+      orderId,
+      approvalStatus,
+    },
+  });
+}
+
+export async function createRole(userId: number, orderId: number, role: Role) {
+  return await prisma.userRole.create({
+    data: {
+      userId,
+      orderId,
+      role,
+    },
+  });
+}
+
+export async function createAccessCode(userId: number, orderId: number) {
+  return await prisma.accessCode.create({
+    data: {
+      userId,
+      orderId,
+      code: uuidv4(),
+    },
+  });
+}
+
+export async function createOrganization(name: OrganizationName) {
+  const existingOrganization = await prisma.organization.findUnique({
+    where: {
+      name,
+    },
+  });
+  if (existingOrganization) return existingOrganization;
+
+  return await prisma.organization.create({
+    data: {
+      name,
+    },
+  });
 }

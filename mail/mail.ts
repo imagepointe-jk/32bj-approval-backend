@@ -27,7 +27,7 @@ export function sendEmail(
 ) {
   const email: Mail.Options = {
     from: fromAddress,
-    to: fromAddress,
+    to: recipientAddress,
     subject,
     text: message,
   };
@@ -35,6 +35,6 @@ export function sendEmail(
     if (err) {
       return console.error(err);
     }
-    console.log(info);
+    console.log(`Successfully sent an email to ${recipientAddress}`);
   });
 }

@@ -6,7 +6,7 @@ import {
   wooCommerceLineItemSchema,
 } from "./sharedTypes";
 import { wooCommerceOrderDataSchema } from "./sharedTypes";
-import { numberInString } from "./types";
+import { numberInString, webhookRequestSchema } from "./types";
 
 function tryFindWooCommerceLineItemCustomOption(
   customOptions: any[],
@@ -119,6 +119,15 @@ export function parseApprovalStatus(str: string) {
 
 export function parseRole(str: string) {
   return roleSchema.parse(str);
+}
+
+export function parseWebhookRequest(req: any) {
+  const approverEmail = req.body["meta_data"].find(
+    (item: any) => item.key === "_additional_approver_emailfmeadditional"
+  ).value;
+  req.body.approverEmail = approverEmail;
+  req.headers.webhookSource = req.headers["x-wc-webhook-source"];
+  return webhookRequestSchema.parse(req);
 }
 
 //some of the woo commerce json data contains objects with variable amounts of numeric keys.
