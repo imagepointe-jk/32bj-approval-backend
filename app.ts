@@ -48,12 +48,15 @@ app.get("/workflow/:accessCode", async (req, res) => {
 });
 
 //receive webhook from WooCommerce
+//! This is technically a security vulnerability.
+//! Tried to find a way to verify genuine WC webhooks, but there is almost no documentation on how to do this, and all my attempts have failed so far.
+//! Likely not a major risk for this project, but something to come back to if there's time.
 app.post("/", (req, res) => {
   console.log("Received request==============");
   console.log("headers:");
-  console.log(req.headers);
+  console.log(JSON.stringify(req.headers));
   console.log("body:");
-  console.log(req.body);
+  console.log(JSON.stringify(req.body));
   sendEmail(
     "josh.klope@imagepointe.com",
     "Test email",
