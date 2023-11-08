@@ -127,6 +127,7 @@ export function parseWebhookRequest(req: any) {
   ).value;
   req.body.approverEmail = approverEmail;
   req.headers.webhookSource = req.headers["x-wc-webhook-source"];
+  req.headers.webhookDevPass = req.headers.webhookdevpass;
   return webhookRequestSchema.parse(req);
 }
 

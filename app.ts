@@ -70,6 +70,10 @@ app.post("/", async (req, res) => {
   printWebhookReceived(req.headers, req.body);
   try {
     const parsedRequest = parseWebhookRequest(req);
+    //if the developer password is provided, we can return access codes for testing purposes
+    const isDeveloperRequest =
+      parsedRequest.headers.webhookDevPass === process.env.WEBHOOK_DEV_PASS;
+
     const {
       billing: { email, first_name },
       approverEmail,
@@ -126,12 +130,22 @@ app.post("/", async (req, res) => {
       "Order Approval",
       `A new order for ${organization.name} is ready for review. Please use the access code ${editorAccessCode.code} to check the data.`
     );
+
+    const data = isDeveloperRequest
+      ? {
+          artistAccessCode: artistAccessCode.code,
+          editorAccessCode: editorAccessCode.code,
+          requesterAccessCode: requesterAccessCode.code,
+          approverAccessCode: approverAccessCode.code,
+          releaserAccessCode: releaserAccessCode.code,
+        }
+      : {};
+
+    res.status(200).send(data);
   } catch (error) {
     console.error(`Error creating order: ${error}`);
     res.status(200).send(); //always send a 200 back to WC, to avoid breaking their brittle webhook
   }
-
-  res.status(200).send();
 });
 
 const port = process.env.PORT || 3000;

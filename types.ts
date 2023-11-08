@@ -17,6 +17,7 @@ export const numberInString = z.string().transform((val, ctx) => {
 export const webhookRequestSchema = z.object({
   headers: z.object({
     webhookSource: z.string(),
+    webhookDevPass: z.string().optional(),
   }),
   body: z.object({
     id: z.number(),
