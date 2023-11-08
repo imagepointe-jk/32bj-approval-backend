@@ -8,11 +8,17 @@ import {
   getDataForAccessCode,
 } from "./dbLogic";
 import { fetchWooCommerceOrder } from "./fetch";
-import { WorkflowData } from "./sharedTypes";
-import { OK } from "./statusCodes";
+import { WorkflowData, approvalStatuses } from "./sharedTypes";
+import {
+  BAD_REQUEST,
+  FORBIDDEN,
+  INTERNAL_SERVER_ERROR,
+  NOT_FOUND,
+  OK,
+} from "./statusCodes";
 import { message, printWebhookReceived } from "./utility";
 import { sendEmail } from "./mail/mail";
-import { parseWebhookRequest } from "./validations";
+import { parseApprovalStatus, parseWebhookRequest } from "./validations";
 import {
   imagePointeArtist,
   imagePointeEditor,
@@ -20,6 +26,7 @@ import {
   organizationSources,
   testApprover,
 } from "./constants";
+import { prisma } from "./client";
 
 const app = express();
 app.use(json());
@@ -145,6 +152,70 @@ app.post("/", async (req, res) => {
   } catch (error) {
     console.error(`Error creating order: ${error}`);
     res.status(200).send(); //always send a 200 back to WC, to avoid breaking their brittle webhook
+  }
+});
+
+app.post("/approval", async (req, res) => {
+  const errors = {
+    approvalError: "Invalid approval status.",
+    accessCodeError: "Invalid access code.",
+  };
+
+  try {
+    const approvalStatus = req.body.approvalStatus;
+    const accessCode = req.body.accessCode;
+    if (!approvalStatuses.includes(approvalStatus))
+      throw new Error(errors.approvalError);
+    console.log("reached 1");
+    const existingAccessCode = await prisma.accessCode.findFirst({
+      where: {
+        code: accessCode,
+      },
+    });
+    if (!existingAccessCode) throw new Error(errors.accessCodeError);
+    const { userId, orderId } = existingAccessCode;
+
+    const existingApprovalStatus = await prisma.userApproval.findFirst({
+      where: {
+        userId,
+        orderId,
+      },
+    });
+    console.log("reached 2");
+    if (!existingApprovalStatus) {
+      const newApprovalStatus = await prisma.userApproval.create({
+        data: {
+          userId,
+          orderId,
+          approvalStatus,
+        },
+      });
+      console.log(
+        `Created a new approval status "${approvalStatus}" for user ${userId} on order ${orderId}`
+      );
+      return res.status(OK).send(newApprovalStatus);
+    } else {
+      const updatedApprovalStatus = await prisma.userApproval.update({
+        where: {
+          id: existingApprovalStatus.id,
+        },
+        data: {
+          approvalStatus,
+        },
+      });
+      console.log(
+        `Updated approval status to "${approvalStatus}" for user ${userId} on order ${orderId}`
+      );
+      return res.status(OK).send(updatedApprovalStatus);
+    }
+  } catch (error) {
+    const errorMessage = (error as Error).message;
+    if (errorMessage === errors.accessCodeError)
+      return res.status(FORBIDDEN).send(message(errorMessage));
+    else if (errorMessage === errors.approvalError)
+      return res.status(BAD_REQUEST).send(message(errorMessage));
+    else
+      return res.status(INTERNAL_SERVER_ERROR).send(message("Unknown error."));
   }
 });
 
