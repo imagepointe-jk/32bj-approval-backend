@@ -73,6 +73,7 @@ app.get("/workflow/:accessCode", async (req, res) => {
 //! This is technically a security vulnerability.
 //! Tried to find a way to verify genuine WC webhooks, but there is almost no documentation on how to do this, and all my attempts have failed so far.
 //! Likely not a major risk for this project, but something to come back to if there's time.
+//! Note that an attacker would need to both know the server URL and mimic the exact webhook schema specified in this project.
 app.post("/", async (req, res) => {
   printWebhookReceived(req.headers, req.body);
   try {
@@ -166,7 +167,6 @@ app.post("/approval", async (req, res) => {
     const accessCode = req.body.accessCode;
     if (!approvalStatuses.includes(approvalStatus))
       throw new Error(errors.approvalError);
-    console.log("reached 1");
     const existingAccessCode = await prisma.accessCode.findFirst({
       where: {
         code: accessCode,
@@ -181,7 +181,6 @@ app.post("/approval", async (req, res) => {
         orderId,
       },
     });
-    console.log("reached 2");
     if (!existingApprovalStatus) {
       const newApprovalStatus = await prisma.userApproval.create({
         data: {

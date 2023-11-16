@@ -29,7 +29,7 @@ export function sendEmail(
     from: fromAddress,
     to: recipientAddress,
     subject,
-    text: message,
+    html: message,
   };
   transporter.sendMail(email, (err, info) => {
     if (err) {

@@ -37,3 +37,12 @@ export type ServerOperationResult = {
 };
 
 export type WooCommerceOrderData = z.infer<typeof wooCommerceOrderDataSchema>;
+
+export type UserWithDbData = {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  approvalStatus: string;
+  accessCode: string;
+};
