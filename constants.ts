@@ -31,3 +31,5 @@ export const organizationReleaser = {
   name: "Melvin",
   email: "dev.melvin.carpenter@gmail.com",
 };
+
+export const frontEndURL = "https://www.EXAMPLE-LINK.com";

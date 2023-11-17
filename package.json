@@ -8,7 +8,7 @@
     "seed": "npx ts-node ./seed/seed.ts",
     "server": "npx nodemon app.ts",
     "migrate": "npx prisma migrate deploy",
-    "test-notifications": "npx jest notifications"
+    "test-generate-notifications": "npx jest generateNotifications"
   },
   "keywords": [],
   "author": "",

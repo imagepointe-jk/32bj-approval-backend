@@ -1,3 +1,4 @@
+import { frontEndURL } from "../constants";
 import { ApprovalStatus, Role } from "../sharedTypes";
 import { UserWithDbData } from "../types";
 import { isOrderFullyApproved } from "../utility";
@@ -21,6 +22,8 @@ const genericMessageStart = (orderId: number) =>
 const closingLine = "<p>Thank you,<br>-Image Pointe Team</p>";
 const contactUsLink =
   '<a href="https://www.imagepointe.com/contact-us/">contact us</a>';
+const goToAppLink = (accessCode: string, orderId: number) =>
+  `<a href="${frontEndURL}/${accessCode}">Go to Order #${orderId}</a>`;
 
 export function generateEmailsAfterApprovalStatusChange(
   roleThatChanged: Role,
@@ -54,7 +57,8 @@ export function generateEmailsAfterApprovalStatusChange(
           ? generateGenericStatusChangeConfirmation(
               user.name,
               newStatus,
-              orderId
+              orderId,
+              user.accessCode
             )
           : generateGenericStatusChangeMessage(
               user.name,
@@ -116,7 +120,8 @@ export function generateEmailsAfterApprovalStatusChange(
           ? generateGenericStatusChangeConfirmation(
               user.name,
               newStatus,
-              orderId
+              orderId,
+              user.accessCode
             )
           : generateGenericStatusChangeMessage(
               user.name,
@@ -152,9 +157,9 @@ export function generateGenericStatusChangeMessage(
   return `${genericSalutation(recipientName)}
     ${genericMessageStart(orderId)}
     <p>${userThatChanged} has changed their status to "${newStatus}."</p>
-    <p>Please click this link to review the order and take action if necessary.</p>
+    <p>Please click the link below to review the order and take action if necessary.</p>
+    <p>${goToAppLink(recipientAccessCode, orderId)}</p>
     ${closingLine}`;
-  //TODO: Actually include the link
 }
 
 export function generateRealCancelMessage(
@@ -178,23 +183,25 @@ export function generateTentativeCancelMessage(
   const secondLine = isConfirmation
     ? `<p>This is to inform you that you have successfully requested a cancellation on Order #${orderId}.</p>`
     : `<p>This is to inform you that ${userThatChanged} has requested that Order #${orderId} be canceled.</p>`;
+
   return `${genericSalutation(recipientName)}
     ${secondLine}
-    <p>The order has NOT been canceled yet. Please visit the approval page to see if your input is needed.</p>
+    <p>The order has NOT been canceled yet. Please visit the order page to see if your input is needed.</p>
+    <p>${goToAppLink(recipientAccessCode, orderId)}</p>
     ${closingLine}`;
-  //TODO: Actually include the link
 }
 
 export function generateGenericStatusChangeConfirmation(
   recipientName: string,
   newStatus: string,
-  orderId: number
+  orderId: number,
+  recipientAccessCode: string
 ) {
   return `${genericSalutation(recipientName)}
     <p>This is to confirm that you have changed your status on Order #${orderId} to "${newStatus}".</p>
     <p>Feel free to return to the order approval page to check for updates or change your status again.</p>
+    <p>${goToAppLink(recipientAccessCode, orderId)}</p>
     ${closingLine}`;
-  //TODO: Actually include the link
 }
 
 export function generateCancelConfirmation(

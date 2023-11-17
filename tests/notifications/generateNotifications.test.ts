@@ -58,7 +58,7 @@ const createFakeUserData = (): UserWithDbData[] => [
 ];
 
 describe("Check for correct notifications when the order is fully approved", () => {
-  it("should send a 'fully approved' email to everyone when the order is fully approved", () => {
+  it("should generate a 'fully approved' email for everyone when the order is fully approved", () => {
     const fakeUsers = createFakeUserData();
     const fakeOrderId = 1234;
     for (const user of fakeUsers) {
@@ -86,57 +86,57 @@ describe("Check for correct notifications when the order is fully approved", () 
 });
 
 describe("Check for correct email notifications when anyone changes status to 'approve'", () => {
-  it("should send an email to everyone but the artist when the editor changes to 'approve'", () => {
+  it("should generate an email for everyone but the artist when the editor changes to 'approve'", () => {
     testGenericStatusChangeNotifications(1, "approve", false);
   });
-  it("should send an email to everyone but the artist when the requester changes to 'approve'", () => {
+  it("should generate an email for everyone but the artist when the requester changes to 'approve'", () => {
     testGenericStatusChangeNotifications(2, "approve", false);
   });
-  it("should send an email to everyone but the artist when the approver changes to 'approve'", () => {
+  it("should generate an email for everyone but the artist when the approver changes to 'approve'", () => {
     testGenericStatusChangeNotifications(3, "approve", false);
   });
-  it("should send an email to everyone but the artist when the releaser changes to 'approve'", () => {
+  it("should generate an email for everyone but the artist when the releaser changes to 'approve'", () => {
     testGenericStatusChangeNotifications(4, "approve", false);
   });
 });
 describe("Check for correct email notifications when anyone changes status to 'undecided'", () => {
-  it("should send an email to everyone but the artist when the requester changes to 'undecided'", () => {
+  it("should generate an email for everyone but the artist when the requester changes to 'undecided'", () => {
     testGenericStatusChangeNotifications(2, "undecided", false);
   });
-  it("should send an email to everyone but the artist when the approver changes to 'undecided'", () => {
+  it("should generate an email for everyone but the artist when the approver changes to 'undecided'", () => {
     testGenericStatusChangeNotifications(3, "undecided", false);
   });
-  it("should send an email to everyone but the artist when the releaser changes to 'undecided'", () => {
+  it("should generate an email for everyone but the artist when the releaser changes to 'undecided'", () => {
     testGenericStatusChangeNotifications(4, "undecided", false);
   });
 });
 
 describe("Check for correct email notifications when anyone changes status to 'revise'", () => {
-  it("should send an email to EVERYONE, including the artist, when the editor changes to 'revise'", () => {
+  it("should generate an email for EVERYONE, including the artist, when the editor changes to 'revise'", () => {
     testGenericStatusChangeNotifications(1, "revise", true);
   });
-  it("should send an email to EVERYONE, including the artist, when the requester changes to 'revise'", () => {
+  it("should generate an email for EVERYONE, including the artist, when the requester changes to 'revise'", () => {
     testGenericStatusChangeNotifications(2, "revise", true);
   });
-  it("should send an email to EVERYONE, including the artist, when the approver changes to 'revise'", () => {
+  it("should generate an email for EVERYONE, including the artist, when the approver changes to 'revise'", () => {
     testGenericStatusChangeNotifications(3, "revise", true);
   });
-  it("should send an email to EVERYONE, including the artist, when the releaser changes to 'revise'", () => {
+  it("should generate an email for EVERYONE, including the artist, when the releaser changes to 'revise'", () => {
     testGenericStatusChangeNotifications(4, "revise", true);
   });
 });
 
 describe("Check for correct email notifications when anyone changes status to 'cancel'", () => {
-  it("should send a REAL CANCEL email to everyone except the artist when the editor changes to 'cancel'", () => {
+  it("should generate a REAL CANCEL email for everyone except the artist when the editor changes to 'cancel'", () => {
     testCancelNotifications(1);
   });
-  it("should send a REAL CANCEL email to everyone except the artist when the requester changes to 'cancel'", () => {
+  it("should generate a REAL CANCEL email for everyone except the artist when the requester changes to 'cancel'", () => {
     testCancelNotifications(2);
   });
-  it("should send a TENTATIVE CANCEL email to everyone except the artist when the approver changes to 'cancel'", () => {
+  it("should generate a TENTATIVE CANCEL email for everyone except the artist when the approver changes to 'cancel'", () => {
     testCancelNotifications(3);
   });
-  it("should send a REAL CANCEL email to everyone except the artist when the releaser changes to 'cancel'", () => {
+  it("should generate a REAL CANCEL email for everyone except the artist when the releaser changes to 'cancel'", () => {
     testCancelNotifications(4);
   });
 });
@@ -173,7 +173,8 @@ function testGenericStatusChangeNotifications(
         ? generateGenericStatusChangeConfirmation(
             user.name,
             newStatus,
-            fakeOrderId
+            fakeOrderId,
+            user.accessCode
           )
         : generateGenericStatusChangeMessage(
             user.name,
@@ -204,11 +205,6 @@ function testCancelNotifications(userIndexForChange: number) {
   );
 
   expect(generatedEmails.length).toBe(fakeUsers.length - 1);
-
-  //   let expectedEditorEmail: EmailData;
-  //   let expectedRequesterEmail: EmailData;
-  //   let expectedApproverEmail: EmailData;
-  //   let expectedReleaserEmail: EmailData;
 
   let expectedEmails: EmailData[];
 
@@ -244,109 +240,7 @@ function testCancelNotifications(userIndexForChange: number) {
     });
   }
 
-  //   if (userThatChanged.role === "approver") {
-  //     expectedEditorEmail = {
-  //       recipientAddress: editor.email,
-  //       subject: genericSubject(fakeOrderId),
-  //       message: generateTentativeCancelMessage(
-  //         editor.name,
-  //         approver.name,
-  //         fakeOrderId,
-  //         editor.accessCode,
-  //         false
-  //       ),
-  //     };
-  //     expectedRequesterEmail = {
-  //       recipientAddress: requester.email,
-  //       subject: genericSubject(fakeOrderId),
-  //       message: generateTentativeCancelMessage(
-  //         requester.name,
-  //         approver.name,
-  //         fakeOrderId,
-  //         requester.accessCode,
-  //         false
-  //       ),
-  //     };
-  //     expectedApproverEmail = {
-  //       recipientAddress: approver.email,
-  //       subject: genericSubject(fakeOrderId),
-  //       message: generateTentativeCancelMessage(
-  //         approver.name,
-  //         approver.name,
-  //         fakeOrderId,
-  //         approver.accessCode,
-  //         true
-  //       ),
-  //     };
-  //     expectedReleaserEmail = {
-  //       recipientAddress: releaser.email,
-  //       subject: genericSubject(fakeOrderId),
-  //       message: generateTentativeCancelMessage(
-  //         releaser.name,
-  //         approver.name,
-  //         fakeOrderId,
-  //         releaser.accessCode,
-  //         false
-  //       ),
-  //     };
-  //   } else {
-  //     expectedEditorEmail = {
-  //       recipientAddress: editor.email,
-  //       subject: canceledSubject(fakeOrderId),
-  //       message:
-  //         editor.name === userThatChanged.name
-  //           ? generateCancelConfirmation(editor.name, fakeOrderId)
-  //           : generateRealCancelMessage(
-  //               editor.name,
-  //               userThatChanged.name,
-  //               fakeOrderId
-  //             ),
-  //     };
-  //     expectedRequesterEmail = {
-  //       recipientAddress: requester.email,
-  //       subject: canceledSubject(fakeOrderId),
-  //       message:
-  //         requester.name === userThatChanged.name
-  //           ? generateCancelConfirmation(requester.name, fakeOrderId)
-  //           : generateRealCancelMessage(
-  //               requester.name,
-  //               userThatChanged.name,
-  //               fakeOrderId
-  //             ),
-  //     };
-  //     expectedApproverEmail = {
-  //       recipientAddress: approver.email,
-  //       subject: canceledSubject(fakeOrderId),
-  //       message:
-  //         approver.name === userThatChanged.name
-  //           ? generateCancelConfirmation(approver.name, fakeOrderId)
-  //           : generateRealCancelMessage(
-  //               approver.name,
-  //               userThatChanged.name,
-  //               fakeOrderId
-  //             ),
-  //     };
-  //     expectedReleaserEmail = {
-  //       recipientAddress: releaser.email,
-  //       subject: canceledSubject(fakeOrderId),
-  //       message:
-  //         releaser.name === userThatChanged.name
-  //           ? generateCancelConfirmation(releaser.name, fakeOrderId)
-  //           : generateRealCancelMessage(
-  //               releaser.name,
-  //               userThatChanged.name,
-  //               fakeOrderId
-  //             ),
-  //     };
-  //   }
   for (const expectedEmail of expectedEmails) {
     expect(generatedEmails).toContainEqual(expectedEmail);
   }
-
-  //   const expectedEmails = usersWithoutArtist.map(user => {
-  //     const recipientAddress = user.email;
-  //     const subject = canceledSubject(fakeOrderId);
-  //     let message = generateRealCancelMessage(user.name, userThatChanged.name, fakeOrderId);
-  //     if (user.name === userThatChanged.name)
-  //   })
 }
