@@ -28,9 +28,6 @@ export function generateEmailsAfterApprovalStatusChange(
   orderId: number,
   usersData: UserWithDbData[]
 ): EmailData[] {
-  console.log(
-    "==================================================================================================="
-  );
   const userThatChanged = usersData.filter(
     (user) => user.role === roleThatChanged
   )[0];
@@ -52,13 +49,20 @@ export function generateEmailsAfterApprovalStatusChange(
     const genericEmails: EmailData[] = usersData.map((user) => ({
       recipientAddress: user.email,
       subject: genericSubject(orderId),
-      message: generateGenericStatusChangeMessage(
-        user.name,
-        userThatChanged.name,
-        newStatus,
-        orderId,
-        user.accessCode
-      ),
+      message:
+        user.name === userThatChanged.name
+          ? generateGenericStatusChangeConfirmation(
+              user.name,
+              newStatus,
+              orderId
+            )
+          : generateGenericStatusChangeMessage(
+              user.name,
+              userThatChanged.name,
+              newStatus,
+              orderId,
+              user.accessCode
+            ),
     }));
     return genericEmails;
   }
@@ -69,7 +73,7 @@ export function generateEmailsAfterApprovalStatusChange(
     if (userThatChanged.role === "approver") {
       const cancelEmails: EmailData[] = usersWithoutArtist.map((user) => {
         const recipientAddress = user.email;
-        const subject = canceledSubject(orderId);
+        const subject = genericSubject(orderId);
         const message = generateTentativeCancelMessage(
           user.name,
           userThatChanged.name,
@@ -109,7 +113,11 @@ export function generateEmailsAfterApprovalStatusChange(
       //if this is the user that made the change, send them a confirmation instead of a generic message
       const message =
         user.name === userThatChanged.name
-          ? generateStatusChangeConfirmation(user.name, newStatus, orderId)
+          ? generateGenericStatusChangeConfirmation(
+              user.name,
+              newStatus,
+              orderId
+            )
           : generateGenericStatusChangeMessage(
               user.name,
               userThatChanged.name,
@@ -177,7 +185,7 @@ export function generateTentativeCancelMessage(
   //TODO: Actually include the link
 }
 
-export function generateStatusChangeConfirmation(
+export function generateGenericStatusChangeConfirmation(
   recipientName: string,
   newStatus: string,
   orderId: number
