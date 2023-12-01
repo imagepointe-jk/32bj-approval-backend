@@ -29,6 +29,19 @@ import {
 import { prisma } from "./client";
 
 const app = express();
+const devMode = app.get("env") === "development";
+
+const allowedOrigins: string[] = [];
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && (devMode || allowedOrigins.includes(origin))) {
+    res.header("Access-Control-Allow-Origin", origin);
+  }
+  res.header("Access-Control-Allow-Methods", "GET, PUT, POST, DELETE");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  next();
+});
+
 app.use(json());
 
 //TODO: validate all inputs (like zod middleware would do)
