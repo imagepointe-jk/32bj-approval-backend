@@ -76,6 +76,8 @@ app.get("/workflow/:accessCode", async (req, res) => {
     lineItems: fetchedOrderData.lineItems,
     total: fetchedOrderData.total,
     totalTax: fetchedOrderData.totalTax,
+    feeLines: fetchedOrderData.feeLines,
+    shippingTotal: fetchedOrderData.shippingTotal,
     userData,
   };
 

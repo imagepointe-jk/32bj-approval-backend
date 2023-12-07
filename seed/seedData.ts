@@ -1,7 +1,7 @@
 import { TestUser } from "./seedTypes";
 
 export const testWcOrderId1 = 1083,
-  testWcOrderId2 = 1042,
+  testWcOrderId2 = 1131,
   testComment1 =
     "This app is so user-friendly and intuitive! I love how easy it is to navigate and find what I need.",
   testComment2 =
