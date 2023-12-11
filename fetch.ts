@@ -2,6 +2,7 @@ import { SERVER_ERROR } from "./constants";
 import { ServerOperationResult, WooCommerceOrderData } from "./types";
 import { INTERNAL_SERVER_ERROR, OK } from "./statusCodes";
 import { parseWooCommerceOrderJson } from "./validations";
+import { WooCommerceLineItemModification } from "./sharedTypes";
 
 export async function fetchWooCommerceOrder(
   orderId: number
@@ -56,4 +57,32 @@ export async function fetchWooCommerceOrder(
       statusCode: INTERNAL_SERVER_ERROR,
     };
   }
+}
+
+export async function modifyWooCommerceLineItems(
+  wcOrderId: number,
+  lineItems: WooCommerceLineItemModification[]
+) {
+  const wooCommerceKey = process.env.WOO_32BJ_KEY;
+  const wooCommerceSecret = process.env.WOO_32BJ_SECRET;
+  const url = process.env.WOO_32BJ_API_URL;
+
+  const headers = new Headers();
+  headers.append(
+    "Authorization",
+    `Basic ${btoa(`${wooCommerceKey}:${wooCommerceSecret}`)}`
+  );
+  headers.append("Content-Type", "application/json");
+
+  const raw = JSON.stringify({
+    line_items: lineItems,
+  });
+
+  const requestOptions = {
+    method: "PUT",
+    headers: headers,
+    body: raw,
+  };
+
+  return fetch(`${url}/orders/${wcOrderId}`, requestOptions);
 }

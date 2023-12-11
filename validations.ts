@@ -3,6 +3,7 @@ import {
   WooCommerceLineItem,
   approvalStatusSchema,
   roleSchema,
+  wooCommerceLineItemModificationSchema,
   wooCommerceLineItemSchema,
 } from "./sharedTypes";
 import { wooCommerceOrderDataSchema } from "./sharedTypes";
@@ -82,6 +83,7 @@ function parseWooCommerceLineItem(
     : undefined;
 
   return wooCommerceLineItemSchema.parse({
+    id: lineItem.id,
     name: lineItem.name,
     quantity,
     size,
@@ -131,6 +133,10 @@ export function parseWebhookRequest(req: any) {
   req.headers.webhookSource = req.headers["x-wc-webhook-source"];
   req.headers.webhookDevPass = req.headers.webhookdevpass;
   return webhookRequestSchema.parse(req);
+}
+
+export function parseLineItemModifications(json: any) {
+  return z.array(wooCommerceLineItemModificationSchema).parse(json);
 }
 
 //some of the woo commerce json data contains objects with variable amounts of numeric keys.

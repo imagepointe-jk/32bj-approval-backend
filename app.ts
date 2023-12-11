@@ -7,7 +7,7 @@ import {
   createUser,
   getDataForAccessCode,
 } from "./dbLogic";
-import { fetchWooCommerceOrder } from "./fetch";
+import { fetchWooCommerceOrder, modifyWooCommerceLineItems } from "./fetch";
 import { WorkflowData, approvalStatuses } from "./sharedTypes";
 import {
   BAD_REQUEST,
@@ -18,8 +18,14 @@ import {
 } from "./statusCodes";
 import { message, printWebhookReceived } from "./utility";
 import { sendEmail } from "./mail/mail";
-import { parseApprovalStatus, parseWebhookRequest } from "./validations";
 import {
+  parseApprovalStatus,
+  parseLineItemModifications,
+  parseWebhookRequest,
+  parseWooCommerceOrderJson,
+} from "./validations";
+import {
+  SERVER_ERROR,
   imagePointeArtist,
   imagePointeEditor,
   organizationReleaser,
@@ -230,6 +236,43 @@ app.post("/approval", async (req, res) => {
       return res.status(BAD_REQUEST).send(message(errorMessage));
     else
       return res.status(INTERNAL_SERVER_ERROR).send(message("Unknown error."));
+  }
+});
+
+app.put("/workflow/:accessCode/order/line-items", async (req, res) => {
+  const accessCode = req.params.accessCode;
+  const {
+    message: userDataErrorMessage,
+    statusCode,
+    data,
+  } = await getDataForAccessCode(accessCode);
+  if (statusCode !== OK || data === undefined) {
+    return res.status(statusCode).send(message(userDataErrorMessage));
+  }
+
+  if (data.userData.activeUser.role !== "editor") {
+    return res
+      .status(FORBIDDEN)
+      .send(message("You aren't authorized to edit this order."));
+  }
+
+  try {
+    const parsedLineItemsIn = parseLineItemModifications(req.body.line_items);
+    const response = await modifyWooCommerceLineItems(
+      data.wcOrderId,
+      parsedLineItemsIn
+    );
+    if (!response.ok) {
+      console.error(response);
+      throw new Error();
+    }
+
+    const json = await response.json();
+    const parsedLineItemsOut = parseWooCommerceOrderJson(json).lineItems;
+    return res.status(OK).send(parsedLineItemsOut);
+  } catch (error) {
+    console.error(error);
+    return res.status(INTERNAL_SERVER_ERROR).send(message(SERVER_ERROR));
   }
 });
 

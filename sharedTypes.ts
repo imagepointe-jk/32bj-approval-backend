@@ -19,6 +19,7 @@ export const organizationNames = ["32BJ", "RandomTest"] as const;
 
 //#region woo commerce schema
 export const wooCommerceLineItemSchema = z.object({
+  id: z.number(),
   name: z.string(),
   quantity: z.number(),
   size: z.string(),
@@ -44,6 +45,12 @@ export const wooCommerceOrderDataSchema = z.object({
   shippingTotal: z.string(),
   lineItems: z.array(wooCommerceLineItemSchema),
   feeLines: z.array(wooCommerceFeeLineSchema),
+});
+export const wooCommerceLineItemModificationSchema = z.object({
+  id: z.number(),
+  subtotal: z.string().optional(),
+  total: z.string().optional(),
+  quantity: z.number().optional(),
 });
 //#endregion
 
@@ -81,3 +88,6 @@ export type DataForAccessCode = z.infer<typeof dataForAccessCodeSchema>;
 export type OrganizationName = z.infer<typeof organizationNameSchema>;
 
 export type WooCommerceLineItem = z.infer<typeof wooCommerceLineItemSchema>;
+export type WooCommerceLineItemModification = z.infer<
+  typeof wooCommerceLineItemModificationSchema
+>;
