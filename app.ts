@@ -7,7 +7,11 @@ import {
   createUser,
   getDataForAccessCode,
 } from "./dbLogic";
-import { fetchWooCommerceOrder, modifyWooCommerceLineItems } from "./fetch";
+import {
+  fetchWooCommerceOrder,
+  modifyWooCommerceLineItems,
+  uploadOrderImageToWordpress,
+} from "./fetch";
 import { WorkflowData, approvalStatuses } from "./sharedTypes";
 import {
   BAD_REQUEST,
@@ -33,6 +37,7 @@ import {
   testApprover,
 } from "./constants";
 import { prisma } from "./client";
+import multer from "multer";
 
 const app = express();
 const devMode = app.get("env") === "development";
@@ -49,6 +54,9 @@ app.use((req, res, next) => {
 });
 
 app.use(json());
+
+const memoryStorage = multer.memoryStorage();
+const upload = multer({ storage: memoryStorage });
 
 //TODO: validate all inputs (like zod middleware would do)
 
@@ -275,6 +283,45 @@ app.put("/workflow/:accessCode/order/line-items", async (req, res) => {
     return res.status(INTERNAL_SERVER_ERROR).send(message(SERVER_ERROR));
   }
 });
+
+app.post(
+  "/workflow/:accessCode/image",
+  upload.single("file"),
+  async (req, res) => {
+    const accessCode = req.params.accessCode;
+    const {
+      message: userDataErrorMessage,
+      statusCode,
+      data,
+    } = await getDataForAccessCode(accessCode);
+    if (statusCode !== OK || data === undefined) {
+      return res.status(statusCode).send(message(userDataErrorMessage));
+    }
+
+    if (data.userData.activeUser.role !== "artist") {
+      return res
+        .status(FORBIDDEN)
+        .send(
+          message("You aren't authorized to upload an image for this order.")
+        );
+    }
+
+    const file = req.file;
+    if (!file) return res.status(BAD_REQUEST).send("No file found for upload.");
+    try {
+      const response = await uploadOrderImageToWordpress(data.wcOrderId, file);
+      const json = await response.json();
+      if (!response.ok) {
+        return res.status(INTERNAL_SERVER_ERROR).send(json);
+      }
+
+      res.status(200).send(json);
+    } catch (error) {
+      console.error(error);
+      res.status(500).send();
+    }
+  }
+);
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`Listening on port ${port}`));

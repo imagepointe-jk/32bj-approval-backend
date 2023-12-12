@@ -23,3 +23,10 @@ export function isOrderFullyApproved(usersData: UserWithDbData[]) {
   const usersWithoutArtist = usersData.filter((user) => user.role !== "artist");
   return totalApprovals >= usersWithoutArtist.length; // full approval does not depend on artist
 }
+
+export function createOrderImageName(
+  organizationName: string,
+  wcOrderId: number
+) {
+  return `${organizationName}-order-${wcOrderId}-art-proof`;
+}

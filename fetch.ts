@@ -3,6 +3,7 @@ import { ServerOperationResult, WooCommerceOrderData } from "./types";
 import { INTERNAL_SERVER_ERROR, OK } from "./statusCodes";
 import { parseWooCommerceOrderJson } from "./validations";
 import { WooCommerceLineItemModification } from "./sharedTypes";
+import { createOrderImageName } from "./utility";
 
 export async function fetchWooCommerceOrder(
   orderId: number
@@ -85,4 +86,31 @@ export async function modifyWooCommerceLineItems(
   };
 
   return fetch(`${url}/orders/${wcOrderId}`, requestOptions);
+}
+
+export async function uploadOrderImageToWordpress(
+  wcOrderId: number,
+  multerFile: Express.Multer.File
+) {
+  const wpApiUrl = process.env.WP_32BJ_API_URL;
+  const wpApiUsername = process.env.WP_32BJ_API_USERNAME;
+  const wpApiPassword = process.env.WP_32BJ_API_PASSWORD;
+  //assume for now that we're only serving 32BJ
+  const nameToUse = createOrderImageName("32bj", wcOrderId);
+  const fileExtension = multerFile.originalname.split(".")[1];
+  const headers = new Headers();
+  headers.append(
+    "Authorization",
+    `Basic ${btoa(`${wpApiUsername}:${wpApiPassword}`)}`
+  );
+  headers.append("Content-Type", multerFile.mimetype);
+  headers.append(
+    "Content-Disposition",
+    `attachment; filename=${nameToUse}.${fileExtension}`
+  );
+  return fetch(`${wpApiUrl}/media`, {
+    method: "POST",
+    body: multerFile.buffer,
+    headers,
+  });
 }
