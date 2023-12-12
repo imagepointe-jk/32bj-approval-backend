@@ -9,6 +9,7 @@ import {
 } from "./dbLogic";
 import {
   fetchWooCommerceOrder,
+  getImageUrl,
   modifyWooCommerceLineItems,
   uploadOrderImageToWordpress,
 } from "./fetch";
@@ -75,7 +76,7 @@ app.get("/workflow/:accessCode", async (req, res) => {
   }
 
   //use the WC order id found with the access code to get more order data
-  const { userData, wcOrderId, organizationName } = data;
+  const { userData, wcOrderId, organizationName, imageUrl } = data;
   const fetchOrderResult = await fetchWooCommerceOrder(wcOrderId);
   const fetchedOrderData = fetchOrderResult.data;
   if (fetchOrderResult.statusCode !== OK || !fetchedOrderData) {
@@ -92,6 +93,7 @@ app.get("/workflow/:accessCode", async (req, res) => {
     totalTax: fetchedOrderData.totalTax,
     feeLines: fetchedOrderData.feeLines,
     shippingTotal: fetchedOrderData.shippingTotal,
+    imageUrl,
     userData,
   };
 

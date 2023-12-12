@@ -1,7 +1,10 @@
 import { SERVER_ERROR } from "./constants";
 import { ServerOperationResult, WooCommerceOrderData } from "./types";
 import { INTERNAL_SERVER_ERROR, OK } from "./statusCodes";
-import { parseWooCommerceOrderJson } from "./validations";
+import {
+  parseWooCommerceOrderJson,
+  parseWordpressImageSearchResults,
+} from "./validations";
 import { WooCommerceLineItemModification } from "./sharedTypes";
 import { createOrderImageName } from "./utility";
 
@@ -113,4 +116,38 @@ export async function uploadOrderImageToWordpress(
     body: multerFile.buffer,
     headers,
   });
+}
+
+export async function getImageUrl(wcOrderId: number) {
+  const wpApiUrl = process.env.WP_32BJ_API_URL;
+  const wpApiUsername = process.env.WP_32BJ_API_USERNAME;
+  const wpApiPassword = process.env.WP_32BJ_API_PASSWORD;
+  //assume for now that we're only serving 32BJ
+  const nameToUse = createOrderImageName("32bj", wcOrderId);
+  const headers = new Headers();
+  headers.append(
+    "Authorization",
+    `Basic ${btoa(`${wpApiUsername}:${wpApiPassword}`)}`
+  );
+
+  const requestOptions = {
+    method: "GET",
+    headers,
+  };
+
+  try {
+    const response = await fetch(
+      `${wpApiUrl}/media?search=${nameToUse}`,
+      requestOptions
+    );
+    const json = await response.json();
+    const parsedResults = parseWordpressImageSearchResults(json);
+    return parsedResults[0].guid.rendered;
+  } catch (error) {
+    console.error(
+      `Failed to retrieve image '${nameToUse}' for WooCommerce order ${wcOrderId}`,
+      error
+    );
+    return "";
+  }
 }

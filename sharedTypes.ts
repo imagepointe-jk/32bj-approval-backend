@@ -72,6 +72,7 @@ export const dataForAccessCodeSchema = z.object({
   userData: workflowUserDataSchema,
   wcOrderId: z.number(),
   organizationName: organizationNameSchema,
+  imageUrl: z.string(),
 });
 export const workflowDataSchema = z.intersection(
   wooCommerceOrderDataSchema.omit({ id: true }),

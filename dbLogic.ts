@@ -1,5 +1,6 @@
 import { prisma } from "./client";
 import { SERVER_ERROR } from "./constants";
+import { getImageUrl } from "./fetch";
 import {
   ApprovalStatus,
   DataForAccessCode,
@@ -56,6 +57,7 @@ export async function getDataForAccessCode(accessCode: string): Promise<
       },
     },
   });
+  const orderImageUrl = await getImageUrl(activeOrder.wcOrderId);
 
   try {
     const organizationName = organizationNameSchema.parse(
@@ -101,6 +103,7 @@ export async function getDataForAccessCode(accessCode: string): Promise<
         userData: { users: relevantDataPerUser, activeUser: activeUserData },
         wcOrderId: activeOrder.wcOrderId,
         organizationName: organizationName,
+        imageUrl: orderImageUrl,
       },
     };
   } catch (error) {

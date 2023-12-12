@@ -148,3 +148,9 @@ function fakeToRealArray(obj: any) {
   }
   return arr;
 }
+
+export function parseWordpressImageSearchResults(json: any) {
+  return z
+    .array(z.object({ guid: z.object({ rendered: z.string() }) }))
+    .parse(json);
+}
