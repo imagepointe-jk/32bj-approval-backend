@@ -142,10 +142,11 @@ export async function getImageUrl(wcOrderId: number) {
     );
     const json = await response.json();
     const parsedResults = parseWordpressImageSearchResults(json);
+    if (parsedResults.length === 0) return "";
     return parsedResults[0].guid.rendered;
   } catch (error) {
     console.error(
-      `Failed to retrieve image '${nameToUse}' for WooCommerce order ${wcOrderId}`,
+      `Failed to retrieve image '${nameToUse}' for WooCommerce order ${wcOrderId}:`,
       error
     );
     return "";
