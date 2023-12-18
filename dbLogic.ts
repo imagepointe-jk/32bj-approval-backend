@@ -7,6 +7,7 @@ import {
   OrganizationName,
   Role,
   UserPerOrder,
+  WorkflowComment,
   WorkflowUserData,
   organizationNameSchema,
 } from "./sharedTypes";
@@ -57,6 +58,36 @@ export async function getDataForAccessCode(accessCode: string): Promise<
       },
     },
   });
+  const commentsThisOrder = await prisma.comment.findMany({
+    where: {
+      orderId: activeOrder.id,
+    },
+    include: {
+      user: {
+        include: {
+          roles: true,
+        },
+      },
+    },
+  });
+  const workflowComments: WorkflowComment[] = commentsThisOrder.map(
+    (comment) => {
+      const userRole = comment.user.roles.find(
+        (role) => role.orderId === activeOrder.id
+      )!;
+      const parsedRole = parseRole(userRole.role);
+      const parsedApproval = parseApprovalStatus(comment.approvalStatus);
+      const userName = comment.user.name;
+      const builtComment: WorkflowComment = {
+        dateCreated: comment.dateCreated,
+        text: comment.text,
+        userName,
+        userRole: parsedRole,
+        approvalStatus: parsedApproval,
+      };
+      return builtComment;
+    }
+  );
   const orderImageUrl = await getImageUrl(activeOrder.wcOrderId);
 
   try {
@@ -104,6 +135,7 @@ export async function getDataForAccessCode(accessCode: string): Promise<
         wcOrderId: activeOrder.wcOrderId,
         organizationName: organizationName,
         imageUrl: orderImageUrl,
+        comments: workflowComments,
       },
     };
   } catch (error) {

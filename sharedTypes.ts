@@ -17,6 +17,19 @@ export const approvalStatuses = [
 export const organizationNames = ["32BJ", "RandomTest"] as const;
 //#endregion
 
+export const dateInString = z.string().transform((val, ctx) => {
+  const parsed = new Date(val);
+  if (isNaN(parsed.getTime())) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Not a date",
+    });
+
+    return z.NEVER;
+  }
+  return parsed;
+});
+
 //#region woo commerce schema
 export const wooCommerceLineItemSchema = z.object({
   id: z.number(),
@@ -68,11 +81,19 @@ export const workflowUserDataSchema = z.object({
   activeUser: userPerOrderSchema,
 });
 export const organizationNameSchema = z.enum(organizationNames);
+export const workflowCommentSchema = z.object({
+  userName: z.string(),
+  userRole: roleSchema,
+  text: z.string(),
+  dateCreated: dateInString,
+  approvalStatus: approvalStatusSchema,
+});
 export const dataForAccessCodeSchema = z.object({
   userData: workflowUserDataSchema,
   wcOrderId: z.number(),
   organizationName: organizationNameSchema,
   imageUrl: z.string(),
+  comments: z.array(workflowCommentSchema),
 });
 export const workflowDataSchema = z.intersection(
   wooCommerceOrderDataSchema.omit({ id: true }),
@@ -84,6 +105,7 @@ export type Role = z.infer<typeof roleSchema>;
 export type ApprovalStatus = z.infer<typeof approvalStatusSchema>;
 export type WorkflowUserData = z.infer<typeof workflowUserDataSchema>;
 export type WorkflowData = z.infer<typeof workflowDataSchema>;
+export type WorkflowComment = z.infer<typeof workflowCommentSchema>;
 export type UserPerOrder = z.infer<typeof userPerOrderSchema>;
 export type DataForAccessCode = z.infer<typeof dataForAccessCodeSchema>;
 export type OrganizationName = z.infer<typeof organizationNameSchema>;

@@ -76,7 +76,7 @@ app.get("/workflow/:accessCode", async (req, res) => {
   }
 
   //use the WC order id found with the access code to get more order data
-  const { userData, wcOrderId, organizationName, imageUrl } = data;
+  const { userData, wcOrderId, organizationName, imageUrl, comments } = data;
   const fetchOrderResult = await fetchWooCommerceOrder(wcOrderId);
   const fetchedOrderData = fetchOrderResult.data;
   if (fetchOrderResult.statusCode !== OK || !fetchedOrderData) {
@@ -95,6 +95,7 @@ app.get("/workflow/:accessCode", async (req, res) => {
     shippingTotal: fetchedOrderData.shippingTotal,
     imageUrl,
     userData,
+    comments,
   };
 
   res.status(OK).send(workflowData);
