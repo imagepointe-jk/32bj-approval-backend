@@ -13,7 +13,11 @@ import {
 } from "./sharedTypes";
 import { FORBIDDEN, INTERNAL_SERVER_ERROR, OK } from "./statusCodes";
 import { ServerOperationResult } from "./types";
-import { parseApprovalStatus, parseRole } from "./validations";
+import {
+  isStringApprovalStatus,
+  parseApprovalStatus,
+  parseRole,
+} from "./validations";
 import { v4 as uuidv4 } from "uuid";
 
 //get relevant data from OUR db (not WooCommerce) related to an access code
@@ -76,7 +80,9 @@ export async function getDataForAccessCode(accessCode: string): Promise<
         (role) => role.orderId === activeOrder.id
       )!;
       const parsedRole = parseRole(userRole.role);
-      const parsedApproval = parseApprovalStatus(comment.approvalStatus);
+      const parsedApproval = isStringApprovalStatus(`${comment.approvalStatus}`)
+        ? (comment.approvalStatus as ApprovalStatus)
+        : undefined;
       const userName = comment.user.name;
       const builtComment: WorkflowComment = {
         dateCreated: comment.dateCreated,

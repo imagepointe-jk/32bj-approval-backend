@@ -27,7 +27,7 @@ model Comment {
   order          Order    @relation(fields: [orderId], references: [id])
   orderId        Int
   text           String
-  approvalStatus String
+  approvalStatus String?
   dateCreated    DateTime
 }
 

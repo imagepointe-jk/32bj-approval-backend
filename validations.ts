@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   WooCommerceLineItem,
   approvalStatusSchema,
+  dateInString,
   roleSchema,
   wooCommerceLineItemModificationSchema,
   wooCommerceLineItemSchema,
@@ -119,6 +120,10 @@ export function parseWooCommerceOrderJson(json: any) {
 
 export function parseApprovalStatus(str: string) {
   return approvalStatusSchema.parse(str);
+}
+
+export function isStringApprovalStatus(str: string) {
+  return approvalStatusSchema.safeParse(str).success;
 }
 
 export function parseRole(str: string) {

@@ -86,7 +86,7 @@ export const workflowCommentSchema = z.object({
   userRole: roleSchema,
   text: z.string(),
   dateCreated: dateInString,
-  approvalStatus: approvalStatusSchema,
+  approvalStatus: approvalStatusSchema.optional(),
 });
 export const dataForAccessCodeSchema = z.object({
   userData: workflowUserDataSchema,
