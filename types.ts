@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { wooCommerceOrderDataSchema } from "./sharedTypes";
+import {
+  approvalStatusSchema,
+  wooCommerceOrderDataSchema,
+} from "./sharedTypes";
 
 export const numberInString = z.string().transform((val, ctx) => {
   const parsed = +val;
@@ -29,12 +32,10 @@ export const webhookRequestSchema = z.object({
   }),
 });
 
-//Represents any operation done by the server that might result in an error.
-//Useful for returning from a function where something might go wrong, and keeping track of what went wrong.
-export type ServerOperationResult = {
-  statusCode: number;
-  message: string;
-};
+export const approvalPostBodySchema = z.object({
+  approvalStatus: approvalStatusSchema,
+  accessCode: z.string(),
+});
 
 export type WooCommerceOrderData = z.infer<typeof wooCommerceOrderDataSchema>;
 

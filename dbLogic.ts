@@ -1,31 +1,25 @@
+import { v4 as uuidv4 } from "uuid";
 import { prisma } from "./client";
-import { SERVER_ERROR } from "./constants";
+import { AppError } from "./error";
 import { getImageUrl } from "./fetch";
 import {
   ApprovalStatus,
   DataForAccessCode,
-  OrganizationName,
   Role,
   UserPerOrder,
   WorkflowComment,
-  WorkflowUserData,
-  organizationNameSchema,
 } from "./sharedTypes";
-import { FORBIDDEN, INTERNAL_SERVER_ERROR, OK } from "./statusCodes";
-import { ServerOperationResult } from "./types";
+import { FORBIDDEN, INTERNAL_SERVER_ERROR } from "./statusCodes";
 import {
   isStringApprovalStatus,
   parseApprovalStatus,
   parseRole,
 } from "./validations";
-import { v4 as uuidv4 } from "uuid";
 
 //get relevant data from OUR db (not WooCommerce) related to an access code
-export async function getDataForAccessCode(accessCode: string): Promise<
-  ServerOperationResult & {
-    data?: DataForAccessCode;
-  }
-> {
+export async function getDataForAccessCode(
+  accessCode: string
+): Promise<DataForAccessCode> {
   //Check if valid access code
   const accessCodeInDb = await prisma.accessCode.findUnique({
     where: {
@@ -41,30 +35,34 @@ export async function getDataForAccessCode(accessCode: string): Promise<
     },
   });
 
-  if (!accessCodeInDb) {
-    return {
-      message: "Invalid access code.",
-      statusCode: FORBIDDEN,
-    };
-  }
+  if (!accessCodeInDb)
+    throw new AppError("Authentication", FORBIDDEN, "Invalid access code.");
 
   const { user: activeUser, order: activeOrder } = accessCodeInDb;
+  const workflowComments: WorkflowComment[] = await getWorkflowComments(
+    activeOrder.id
+  );
+  const orderImageUrl = await getImageUrl(activeOrder.wcOrderId);
+  const { activeUserData, userData } = await getPerUserData(
+    activeOrder.id,
+    activeUser.id
+  );
 
-  const userRolesThisOrder = await prisma.userRole.findMany({
-    where: {
-      orderId: activeOrder.id,
-    },
-    include: {
-      user: {
-        include: {
-          approvalStatuses: true,
-        },
-      },
-    },
-  });
+  return {
+    userData: { users: userData, activeUser: activeUserData },
+    wcOrderId: activeOrder.wcOrderId,
+    organizationName: activeOrder.organization.name,
+    imageUrl: orderImageUrl,
+    comments: workflowComments,
+  };
+}
+
+async function getWorkflowComments(
+  orderId: number
+): Promise<WorkflowComment[]> {
   const commentsThisOrder = await prisma.comment.findMany({
     where: {
-      orderId: activeOrder.id,
+      orderId: orderId,
     },
     include: {
       user: {
@@ -74,83 +72,78 @@ export async function getDataForAccessCode(accessCode: string): Promise<
       },
     },
   });
-  const workflowComments: WorkflowComment[] = commentsThisOrder.map(
-    (comment) => {
-      const userRole = comment.user.roles.find(
-        (role) => role.orderId === activeOrder.id
-      )!;
-      const parsedRole = parseRole(userRole.role);
-      const parsedApproval = isStringApprovalStatus(`${comment.approvalStatus}`)
-        ? (comment.approvalStatus as ApprovalStatus)
-        : undefined;
-      const userName = comment.user.name;
-      const builtComment: WorkflowComment = {
-        dateCreated: comment.dateCreated,
-        text: comment.text,
-        userName,
-        userRole: parsedRole,
-        approvalStatus: parsedApproval,
-      };
-      return builtComment;
-    }
-  );
-  const orderImageUrl = await getImageUrl(activeOrder.wcOrderId);
 
-  try {
-    const organizationName = organizationNameSchema.parse(
-      activeOrder.organization.name
-    );
+  return commentsThisOrder.map((comment) => {
+    const userRole = comment.user.roles.find(
+      (role) => role.orderId === orderId
+    )!;
+    const parsedRole = parseRole(userRole.role);
+    const parsedApproval = isStringApprovalStatus(`${comment.approvalStatus}`)
+      ? (comment.approvalStatus as ApprovalStatus)
+      : undefined;
+    const userName = comment.user.name;
+    const builtComment: WorkflowComment = {
+      dateCreated: comment.dateCreated,
+      text: comment.text,
+      userName,
+      userRole: parsedRole,
+      approvalStatus: parsedApproval,
+    };
+    return builtComment;
+  });
+}
 
-    //Look through the users, roles, etc. for this order. Build user data objects that will be easy for the front end to use.
-    //While looping, also pull out the role and approval status for the user associated with the access code.
-    //If any bad strings are found for role or approval, it's caught here.
-    let activeUserData: UserPerOrder | undefined = undefined;
-    const relevantDataPerUser = userRolesThisOrder.map((roleEntry) => {
-      const role = parseRole(roleEntry.role);
-      const statusEntryThisOrder = roleEntry.user.approvalStatuses.find(
-        (status) => status.orderId === activeOrder.id
-      );
-      const hasStatusThisOrder = statusEntryThisOrder !== undefined;
-      const approvalStatus: ApprovalStatus = hasStatusThisOrder
-        ? parseApprovalStatus(statusEntryThisOrder.approvalStatus)
-        : "undecided";
-      const userData: UserPerOrder = {
-        name: roleEntry.user.name,
-        approvalStatus,
-        role,
-      };
-      if (roleEntry.user.id === activeUser.id) activeUserData = userData;
-
-      return userData;
-    });
-    if (activeUserData === undefined) {
-      console.error(
-        `User ${activeUser.id} had an access code for order ${activeOrder.id} but no role in the order!`
-      );
-      return {
-        message: SERVER_ERROR,
-        statusCode: INTERNAL_SERVER_ERROR,
-      };
-    }
-
-    return {
-      message: "",
-      statusCode: OK,
-      data: {
-        userData: { users: relevantDataPerUser, activeUser: activeUserData },
-        wcOrderId: activeOrder.wcOrderId,
-        organizationName: organizationName,
-        imageUrl: orderImageUrl,
-        comments: workflowComments,
+async function getPerUserData(orderId: number, activeUserId: number) {
+  //Look through the users, roles, etc. for this order. Build user data objects that will be easy for the front end to use.
+  //While looping, also pull out the role and approval status for the user associated with the access code.
+  let activeUserData: UserPerOrder | undefined = undefined;
+  const userRolesThisOrder = await prisma.userRole.findMany({
+    where: {
+      orderId: orderId,
+    },
+    include: {
+      user: {
+        include: {
+          approvalStatuses: true,
+        },
       },
+    },
+  });
+
+  const userData = userRolesThisOrder.map((roleEntry) => {
+    const role = parseRole(roleEntry.role);
+    const statusEntryThisOrder = roleEntry.user.approvalStatuses.find(
+      (status) => status.orderId === orderId
+    );
+    const hasStatusThisOrder = statusEntryThisOrder !== undefined;
+    const approvalStatus: ApprovalStatus = hasStatusThisOrder
+      ? parseApprovalStatus(statusEntryThisOrder.approvalStatus)
+      : "undecided";
+    const userData: UserPerOrder = {
+      name: roleEntry.user.name,
+      approvalStatus,
+      role,
     };
-  } catch (error) {
-    console.error(error);
-    return {
-      message: SERVER_ERROR,
-      statusCode: INTERNAL_SERVER_ERROR,
-    };
+    if (roleEntry.user.id === activeUserId) activeUserData = userData;
+
+    return userData;
+  });
+
+  if (activeUserData === undefined) {
+    console.error(
+      `User ${activeUserId} had an access code for order ${orderId} but no role in the order!`
+    );
+    throw new AppError(
+      "Data Integrity",
+      INTERNAL_SERVER_ERROR,
+      "Server error."
+    );
   }
+
+  return {
+    userData,
+    activeUserData,
+  };
 }
 
 export async function createUser(name: string, email: string) {
@@ -230,7 +223,7 @@ export async function createAccessCode(userId: number, orderId: number) {
   });
 }
 
-export async function createOrganization(name: OrganizationName) {
+export async function createOrganization(name: string) {
   const existingOrganization = await prisma.organization.findUnique({
     where: {
       name,

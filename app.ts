@@ -1,4 +1,15 @@
 import express, { json } from "express";
+import multer from "multer";
+import { ZodError } from "zod";
+import { validateRequest } from "zod-express-middleware";
+import { prisma } from "./client";
+import {
+  imagePointeArtist,
+  imagePointeEditor,
+  organizationReleaser,
+  organizationSources,
+  testApprover,
+} from "./constants";
 import {
   createAccessCode,
   createOrder,
@@ -7,38 +18,27 @@ import {
   createUser,
   getDataForAccessCode,
 } from "./dbLogic";
+import { AppError } from "./error";
 import {
   fetchWooCommerceOrder,
-  getImageUrl,
   modifyWooCommerceLineItems,
   uploadOrderImageToWordpress,
 } from "./fetch";
-import { WorkflowData, approvalStatuses } from "./sharedTypes";
+import { sendEmail } from "./mail/mail";
+import { WorkflowData } from "./sharedTypes";
 import {
   BAD_REQUEST,
   FORBIDDEN,
   INTERNAL_SERVER_ERROR,
-  NOT_FOUND,
   OK,
 } from "./statusCodes";
+import { approvalPostBodySchema } from "./types";
 import { message, printWebhookReceived } from "./utility";
-import { sendEmail } from "./mail/mail";
 import {
-  parseApprovalStatus,
   parseLineItemModifications,
   parseWebhookRequest,
   parseWooCommerceOrderJson,
 } from "./validations";
-import {
-  SERVER_ERROR,
-  imagePointeArtist,
-  imagePointeEditor,
-  organizationReleaser,
-  organizationSources,
-  testApprover,
-} from "./constants";
-import { prisma } from "./client";
-import multer from "multer";
 
 const app = express();
 const devMode = app.get("env") === "development";
@@ -63,42 +63,39 @@ const upload = multer({ storage: memoryStorage });
 
 //get data associated with access code
 app.get("/workflow/:accessCode", async (req, res) => {
-  const accessCode = req.params.accessCode;
-  //use the access code to figure out what user and order we're viewing
-  //this comes from our db
-  const {
-    message: userDataErrorMessage,
-    statusCode,
-    data,
-  } = await getDataForAccessCode(accessCode);
-  if (statusCode !== OK || data === undefined) {
-    return res.status(statusCode).send(message(userDataErrorMessage));
+  try {
+    const accessCode = req.params.accessCode;
+    //use the access code to figure out what user and order we're viewing
+    //this comes from our db
+    const { userData, wcOrderId, organizationName, imageUrl, comments } =
+      await getDataForAccessCode(accessCode);
+
+    const wooCommerceOrder = await fetchWooCommerceOrder(wcOrderId);
+
+    const workflowData: WorkflowData = {
+      organizationName,
+      wcOrderId: wooCommerceOrder.id,
+      lineItems: wooCommerceOrder.lineItems,
+      total: wooCommerceOrder.total,
+      totalTax: wooCommerceOrder.totalTax,
+      feeLines: wooCommerceOrder.feeLines,
+      shippingTotal: wooCommerceOrder.shippingTotal,
+      imageUrl,
+      userData,
+      comments,
+    };
+
+    res.status(OK).send(workflowData);
+  } catch (error) {
+    if (error instanceof AppError) {
+      return res.status(error.statusCode).send(error.message);
+    }
+    if (error instanceof ZodError) {
+      console.error(error);
+      return res.status(BAD_REQUEST).send(error);
+    }
+    return res.status(INTERNAL_SERVER_ERROR).send(message("Unknown error."));
   }
-
-  //use the WC order id found with the access code to get more order data
-  const { userData, wcOrderId, organizationName, imageUrl, comments } = data;
-  const fetchOrderResult = await fetchWooCommerceOrder(wcOrderId);
-  const fetchedOrderData = fetchOrderResult.data;
-  if (fetchOrderResult.statusCode !== OK || !fetchedOrderData) {
-    return res
-      .status(fetchOrderResult.statusCode)
-      .send(message(fetchOrderResult.message));
-  }
-
-  const workflowData: WorkflowData = {
-    organizationName,
-    wcOrderId: fetchedOrderData.id,
-    lineItems: fetchedOrderData.lineItems,
-    total: fetchedOrderData.total,
-    totalTax: fetchedOrderData.totalTax,
-    feeLines: fetchedOrderData.feeLines,
-    shippingTotal: fetchedOrderData.shippingTotal,
-    imageUrl,
-    userData,
-    comments,
-  };
-
-  res.status(OK).send(workflowData);
 });
 
 //receive webhook from WooCommerce
@@ -116,7 +113,6 @@ app.post("/", async (req, res) => {
 
     const {
       billing: { email, first_name },
-      approverEmail,
       id: wcOrderId,
     } = parsedRequest.body;
     const { webhookSource } = parsedRequest.headers;
@@ -125,7 +121,12 @@ app.post("/", async (req, res) => {
       (source) => source.webhookSource === webhookSource
     );
     if (!organizationSource) {
-      throw new Error(`The webhook source ${webhookSource} is not recognized`);
+      console.error(`Received a webhook from unknown source ${webhookSource}`);
+      throw new AppError(
+        "Webhook",
+        FORBIDDEN,
+        `The webhook source ${webhookSource} is not recognized`
+      );
     }
     const organization = await createOrganization(
       organizationSource.organizationName
@@ -183,107 +184,102 @@ app.post("/", async (req, res) => {
 
     res.status(200).send(data);
   } catch (error) {
-    console.error(`Error creating order: ${error}`);
+    console.error(`Error creating order following a webhook: ${error}`);
     res.status(200).send(); //always send a 200 back to WC, to avoid breaking their brittle webhook
   }
 });
 
-app.post("/approval", async (req, res) => {
-  const errors = {
-    approvalError: "Invalid approval status.",
-    accessCodeError: "Invalid access code.",
-  };
+app.post(
+  "/approval",
+  validateRequest({ body: approvalPostBodySchema }),
+  async (req, res) => {
+    const { accessCode, approvalStatus } = req.body;
+    try {
+      const existingAccessCode = await prisma.accessCode.findFirst({
+        where: {
+          code: accessCode,
+        },
+      });
 
-  try {
-    const approvalStatus = req.body.approvalStatus;
-    const accessCode = req.body.accessCode;
-    if (!approvalStatuses.includes(approvalStatus))
-      throw new Error(errors.approvalError);
-    const existingAccessCode = await prisma.accessCode.findFirst({
-      where: {
-        code: accessCode,
-      },
-    });
-    if (!existingAccessCode) throw new Error(errors.accessCodeError);
-    const { userId, orderId } = existingAccessCode;
+      if (!existingAccessCode)
+        throw new AppError("Authentication", FORBIDDEN, "Invalid access code.");
+      const { userId, orderId } = existingAccessCode;
 
-    const existingApprovalStatus = await prisma.userApproval.findFirst({
-      where: {
-        userId,
-        orderId,
-      },
-    });
-    if (!existingApprovalStatus) {
-      const newApprovalStatus = await prisma.userApproval.create({
-        data: {
+      const existingApprovalStatus = await prisma.userApproval.findFirst({
+        where: {
           userId,
           orderId,
-          approvalStatus,
         },
       });
-      console.log(
-        `Created a new approval status "${approvalStatus}" for user ${userId} on order ${orderId}`
-      );
-      return res.status(OK).send(newApprovalStatus);
-    } else {
-      const updatedApprovalStatus = await prisma.userApproval.update({
-        where: {
-          id: existingApprovalStatus.id,
-        },
-        data: {
-          approvalStatus,
-        },
-      });
-      console.log(
-        `Updated approval status to "${approvalStatus}" for user ${userId} on order ${orderId}`
-      );
-      return res.status(OK).send(updatedApprovalStatus);
-    }
-  } catch (error) {
-    const errorMessage = (error as Error).message;
-    if (errorMessage === errors.accessCodeError)
-      return res.status(FORBIDDEN).send(message(errorMessage));
-    else if (errorMessage === errors.approvalError)
-      return res.status(BAD_REQUEST).send(message(errorMessage));
-    else
+      //if an approval status entry for this user on this order doesn't exist yet, create one
+      if (!existingApprovalStatus) {
+        const newApprovalStatus = await prisma.userApproval.create({
+          data: {
+            userId,
+            orderId,
+            approvalStatus,
+          },
+        });
+        console.log(
+          `Created a new approval status "${approvalStatus}" for user ${userId} on order ${orderId}`
+        );
+        return res.status(OK).send(newApprovalStatus);
+      } else {
+        //if an approval status entry for this user on this order DOES exist already, update it
+        const updatedApprovalStatus = await prisma.userApproval.update({
+          where: {
+            id: existingApprovalStatus.id,
+          },
+          data: {
+            approvalStatus,
+          },
+        });
+        console.log(
+          `Updated approval status to "${approvalStatus}" for user ${userId} on order ${orderId}`
+        );
+        return res.status(OK).send(updatedApprovalStatus);
+      }
+    } catch (error) {
+      if (error instanceof AppError) {
+        return res.status(error.statusCode).send(message(error.message));
+      }
       return res.status(INTERNAL_SERVER_ERROR).send(message("Unknown error."));
+    }
   }
-});
+);
 
 app.put("/workflow/:accessCode/order/line-items", async (req, res) => {
-  const accessCode = req.params.accessCode;
-  const {
-    message: userDataErrorMessage,
-    statusCode,
-    data,
-  } = await getDataForAccessCode(accessCode);
-  if (statusCode !== OK || data === undefined) {
-    return res.status(statusCode).send(message(userDataErrorMessage));
-  }
-
-  if (data.userData.activeUser.role !== "editor") {
-    return res
-      .status(FORBIDDEN)
-      .send(message("You aren't authorized to edit this order."));
-  }
-
   try {
+    const accessCode = req.params.accessCode;
+    const { userData, wcOrderId } = await getDataForAccessCode(accessCode);
+
+    if (userData.activeUser.role !== "editor")
+      throw new AppError(
+        "Authentication",
+        FORBIDDEN,
+        "You must be an editor on this order to edit it."
+      );
+
     const parsedLineItemsIn = parseLineItemModifications(req.body.line_items);
     const response = await modifyWooCommerceLineItems(
-      data.wcOrderId,
+      wcOrderId,
       parsedLineItemsIn
     );
-    if (!response.ok) {
-      console.error(response);
-      throw new Error();
-    }
+    if (!response.ok)
+      throw new AppError(
+        "WooCommerce Integration",
+        response.status,
+        "Server error."
+      );
 
     const json = await response.json();
     const parsedLineItemsOut = parseWooCommerceOrderJson(json).lineItems;
     return res.status(OK).send(parsedLineItemsOut);
   } catch (error) {
-    console.error(error);
-    return res.status(INTERNAL_SERVER_ERROR).send(message(SERVER_ERROR));
+    if (error instanceof AppError) {
+      return res.status(error.statusCode).send(message(error.message));
+    }
+    return res.status(INTERNAL_SERVER_ERROR).send(message("Unknown error."));
   }
 });
 
@@ -292,36 +288,33 @@ app.post(
   upload.single("file"),
   async (req, res) => {
     const accessCode = req.params.accessCode;
-    const {
-      message: userDataErrorMessage,
-      statusCode,
-      data,
-    } = await getDataForAccessCode(accessCode);
-    if (statusCode !== OK || data === undefined) {
-      return res.status(statusCode).send(message(userDataErrorMessage));
-    }
+    const { wcOrderId, userData } = await getDataForAccessCode(accessCode);
 
-    if (data.userData.activeUser.role !== "artist") {
-      return res
-        .status(FORBIDDEN)
-        .send(
-          message("You aren't authorized to upload an image for this order.")
-        );
-    }
+    if (userData.activeUser.role !== "artist")
+      throw new AppError(
+        "Authentication",
+        FORBIDDEN,
+        "You must be an artist on this order to edit the image."
+      );
 
     const file = req.file;
-    if (!file) return res.status(BAD_REQUEST).send("No file found for upload.");
+    if (!file)
+      throw new AppError("Request", BAD_REQUEST, "No file found for upload.");
     try {
-      const response = await uploadOrderImageToWordpress(data.wcOrderId, file);
+      const response = await uploadOrderImageToWordpress(wcOrderId, file);
       const json = await response.json();
-      if (!response.ok) {
-        return res.status(INTERNAL_SERVER_ERROR).send(json);
-      }
+      if (!response.ok)
+        throw new AppError(
+          "WooCommerce Integration",
+          INTERNAL_SERVER_ERROR,
+          "Server error."
+        );
 
       res.status(200).send(json);
     } catch (error) {
-      console.error(error);
-      res.status(500).send();
+      if (error instanceof AppError) {
+        return res.status(error.statusCode).send(message(error.message));
+      }
     }
   }
 );

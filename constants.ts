@@ -1,10 +1,6 @@
-import { OrganizationName } from "./sharedTypes";
-
-export const SERVER_ERROR = "Server error.";
-
 export const organizationSources: {
   webhookSource: string;
-  organizationName: OrganizationName;
+  organizationName: string;
 }[] = [
   {
     webhookSource: "https://imagepointewebstores.com/",

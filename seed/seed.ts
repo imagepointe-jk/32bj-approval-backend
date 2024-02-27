@@ -1,5 +1,5 @@
 import { prisma } from "../client";
-import { ApprovalStatus, OrganizationName, Role } from "../sharedTypes";
+import { ApprovalStatus, Role } from "../sharedTypes";
 import {
   testComment1,
   testComment2,

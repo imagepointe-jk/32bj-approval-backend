@@ -14,7 +14,6 @@ export const approvalStatuses = [
   "cancel",
   "revise",
 ] as const;
-export const organizationNames = ["32BJ", "RandomTest"] as const;
 //#endregion
 
 export const dateInString = z.string().transform((val, ctx) => {
@@ -80,7 +79,6 @@ export const workflowUserDataSchema = z.object({
   users: z.array(userPerOrderSchema),
   activeUser: userPerOrderSchema,
 });
-export const organizationNameSchema = z.enum(organizationNames);
 export const workflowCommentSchema = z.object({
   userName: z.string(),
   userRole: roleSchema,
@@ -91,7 +89,7 @@ export const workflowCommentSchema = z.object({
 export const dataForAccessCodeSchema = z.object({
   userData: workflowUserDataSchema,
   wcOrderId: z.number(),
-  organizationName: organizationNameSchema,
+  organizationName: z.string(),
   imageUrl: z.string(),
   comments: z.array(workflowCommentSchema),
 });
@@ -108,7 +106,6 @@ export type WorkflowData = z.infer<typeof workflowDataSchema>;
 export type WorkflowComment = z.infer<typeof workflowCommentSchema>;
 export type UserPerOrder = z.infer<typeof userPerOrderSchema>;
 export type DataForAccessCode = z.infer<typeof dataForAccessCodeSchema>;
-export type OrganizationName = z.infer<typeof organizationNameSchema>;
 
 export type WooCommerceLineItem = z.infer<typeof wooCommerceLineItemSchema>;
 export type WooCommerceLineItemModification = z.infer<

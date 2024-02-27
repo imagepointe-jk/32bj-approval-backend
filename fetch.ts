@@ -1,16 +1,16 @@
-import { SERVER_ERROR } from "./constants";
-import { ServerOperationResult, WooCommerceOrderData } from "./types";
-import { INTERNAL_SERVER_ERROR, OK } from "./statusCodes";
+import { AppError } from "./error";
+import { WooCommerceLineItemModification } from "./sharedTypes";
+import { INTERNAL_SERVER_ERROR } from "./statusCodes";
+import { WooCommerceOrderData } from "./types";
+import { createOrderImageName } from "./utility";
 import {
   parseWooCommerceOrderJson,
   parseWordpressImageSearchResults,
 } from "./validations";
-import { WooCommerceLineItemModification } from "./sharedTypes";
-import { createOrderImageName } from "./utility";
 
 export async function fetchWooCommerceOrder(
   orderId: number
-): Promise<ServerOperationResult & { data?: WooCommerceOrderData }> {
+): Promise<WooCommerceOrderData> {
   const wooCommerceKey = process.env.WOO_32BJ_KEY;
   const wooCommerceSecret = process.env.WOO_32BJ_SECRET;
   const url = process.env.WOO_32BJ_API_URL;
@@ -18,10 +18,7 @@ export async function fetchWooCommerceOrder(
     console.error(
       "At least one environment variable was undefined while trying to fetch a woo commerce order"
     );
-    return {
-      message: SERVER_ERROR,
-      statusCode: INTERNAL_SERVER_ERROR,
-    };
+    throw new AppError("Environment", INTERNAL_SERVER_ERROR, "Server error.");
   }
 
   const myHeaders = new Headers();
@@ -35,32 +32,20 @@ export async function fetchWooCommerceOrder(
     headers: myHeaders,
   };
 
-  try {
-    const wooCommerceOrderResponse = await fetch(
-      `${url}/orders/${orderId}`,
-      requestOptions
+  const wooCommerceOrderResponse = await fetch(
+    `${url}/orders/${orderId}`,
+    requestOptions
+  );
+  if (!wooCommerceOrderResponse.ok)
+    throw new AppError(
+      "Data Integrity",
+      INTERNAL_SERVER_ERROR,
+      "Server error."
     );
-    if (!wooCommerceOrderResponse.ok) {
-      return {
-        message: wooCommerceOrderResponse.statusText,
-        statusCode: wooCommerceOrderResponse.status,
-      };
-    }
 
-    const json = await wooCommerceOrderResponse.json();
-    const parsed = parseWooCommerceOrderJson(json);
-    return {
-      message: "",
-      statusCode: OK,
-      data: parsed,
-    };
-  } catch (error) {
-    console.error(error);
-    return {
-      message: SERVER_ERROR,
-      statusCode: INTERNAL_SERVER_ERROR,
-    };
-  }
+  const json = await wooCommerceOrderResponse.json();
+  const parsed = parseWooCommerceOrderJson(json);
+  return parsed;
 }
 
 export async function modifyWooCommerceLineItems(
@@ -135,20 +120,23 @@ export async function getImageUrl(wcOrderId: number) {
     headers,
   };
 
-  try {
-    const response = await fetch(
-      `${wpApiUrl}/media?search=${nameToUse}`,
-      requestOptions
-    );
-    const json = await response.json();
-    const parsedResults = parseWordpressImageSearchResults(json);
-    if (parsedResults.length === 0) return "";
-    return parsedResults[0].guid.rendered;
-  } catch (error) {
+  const response = await fetch(
+    `${wpApiUrl}/media?search=${nameToUse}`,
+    requestOptions
+  );
+  if (!response.ok) {
     console.error(
-      `Failed to retrieve image '${nameToUse}' for WooCommerce order ${wcOrderId}:`,
-      error
+      `Failed to retrieve image name ${nameToUse} from WordPress for order ID ${wcOrderId}`
     );
-    return "";
+    throw new AppError(
+      "Data Integrity",
+      INTERNAL_SERVER_ERROR,
+      "Server error."
+    );
   }
+  const json = await response.json();
+  const parsedResults = parseWordpressImageSearchResults(json);
+
+  if (parsedResults.length === 0) return "";
+  return parsedResults[0].guid.rendered;
 }
