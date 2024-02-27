@@ -14,6 +14,21 @@ export const numberInString = z.string().transform((val, ctx) => {
   return parsed;
 });
 
+export const webhookRequestSchema = z.object({
+  headers: z.object({
+    webhookSource: z.string(),
+    webhookDevPass: z.string().optional(),
+  }),
+  body: z.object({
+    id: z.number(),
+    billing: z.object({
+      first_name: z.string(),
+      email: z.string(),
+    }),
+    approverEmail: z.string(),
+  }),
+});
+
 //Represents any operation done by the server that might result in an error.
 //Useful for returning from a function where something might go wrong, and keeping track of what went wrong.
 export type ServerOperationResult = {
@@ -22,3 +37,12 @@ export type ServerOperationResult = {
 };
 
 export type WooCommerceOrderData = z.infer<typeof wooCommerceOrderDataSchema>;
+
+export type UserWithDbData = {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  approvalStatus: string;
+  accessCode: string;
+};

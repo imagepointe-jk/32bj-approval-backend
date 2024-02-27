@@ -2,11 +2,13 @@ import { z } from "zod";
 import {
   WooCommerceLineItem,
   approvalStatusSchema,
+  dateInString,
   roleSchema,
+  wooCommerceLineItemModificationSchema,
   wooCommerceLineItemSchema,
 } from "./sharedTypes";
 import { wooCommerceOrderDataSchema } from "./sharedTypes";
-import { numberInString } from "./types";
+import { numberInString, webhookRequestSchema } from "./types";
 
 function tryFindWooCommerceLineItemCustomOption(
   customOptions: any[],
@@ -68,43 +70,9 @@ function parseWooCommerceLineItem(
     false
   );
 
-  // const printLocationsOption = customOptions.find(
-  //   (option) => option.name.toLocaleLowerCase() === "print locations"
-  // );
-  // if (!printLocationsOption) {
-  //   console.error("no print locations option");
-  //   throw new Error();
-  //   return;
-  // }
-
-  // const designCountOption = customOptions.find(
-  //   (option) => option.name.toLocaleLowerCase() === "number of designs"
-  // );
-  // if (!designCountOption) {
-  //   console.error("no number of designs option");
-  //   throw new Error();
-  //   return;
-  // }
-
-  //expect design 1 to always have colors defined, since order must have at least 1 design
-  // const design1ColorsOption = customOptions.find(
-  //   (option) => option.name.toLocaleLowerCase() === "design 1 colors"
-  // );
-  // if (!design1ColorsOption) {
-  //   console.error("no design 1 colors option");
-  //   throw new Error();
-  //   return;
-  // }
-
-  // //if user didn't request 2 designs, there won't be design #2 colors
-  // const design2ColorsOption = customOptions.find(
-  //   (option) => option.name.toLocaleLowerCase() === "design 2 colors"
-  // );
-
   const quantity = lineItem.quantity;
   const total = lineItem.total;
   const totalTax = lineItem.total_tax;
-  console.log("total tax is " + lineItem.total_tax);
   const size = `${sizeMeta.value}`;
   const printLocations = (printLocationsOption["choice_data"] as any[]).map(
     (choice: any) => `${choice.label}`
@@ -114,19 +82,9 @@ function parseWooCommerceLineItem(
   const design2Colors = design2ColorsOption
     ? `${design2ColorsOption["choice_data"][0].label}`
     : undefined;
-  console.log({
-    name: lineItem.name,
-    quantity,
-    size,
-    total,
-    totalTax,
-    printLocations,
-    designCount,
-    design1Colors,
-    design2Colors,
-  });
 
   return wooCommerceLineItemSchema.parse({
+    id: lineItem.id,
     name: lineItem.name,
     quantity,
     size,
@@ -154,10 +112,8 @@ export function parseWooCommerceOrderJson(json: any) {
 
   json.lineItems = lineItemsFiltered;
   json.totalTax = json.total_tax;
-  console.log("id is " + json.id);
-  console.log(
-    "line items is: " + json.lineItems.some((item: any) => item !== undefined)
-  );
+  json.feeLines = json.fee_lines;
+  json.shippingTotal = json.shipping_total;
 
   return wooCommerceOrderDataSchema.parse(json);
 }
@@ -166,8 +122,26 @@ export function parseApprovalStatus(str: string) {
   return approvalStatusSchema.parse(str);
 }
 
+export function isStringApprovalStatus(str: string) {
+  return approvalStatusSchema.safeParse(str).success;
+}
+
 export function parseRole(str: string) {
   return roleSchema.parse(str);
+}
+
+export function parseWebhookRequest(req: any) {
+  const approverEmail = req.body["meta_data"].find(
+    (item: any) => item.key === "_additional_approver_emailfmeadditional"
+  ).value;
+  req.body.approverEmail = approverEmail;
+  req.headers.webhookSource = req.headers["x-wc-webhook-source"];
+  req.headers.webhookDevPass = req.headers.webhookdevpass;
+  return webhookRequestSchema.parse(req);
+}
+
+export function parseLineItemModifications(json: any) {
+  return z.array(wooCommerceLineItemModificationSchema).parse(json);
 }
 
 //some of the woo commerce json data contains objects with variable amounts of numeric keys.
@@ -178,4 +152,10 @@ function fakeToRealArray(obj: any) {
     arr.push(value);
   }
   return arr;
+}
+
+export function parseWordpressImageSearchResults(json: any) {
+  return z
+    .array(z.object({ guid: z.object({ rendered: z.string() }) }))
+    .parse(json);
 }
