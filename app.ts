@@ -12,6 +12,7 @@ import {
 } from "./constants";
 import {
   createAccessCode,
+  createComment,
   createOrder,
   createOrganization,
   createRole,
@@ -32,9 +33,14 @@ import {
   INTERNAL_SERVER_ERROR,
   OK,
 } from "./statusCodes";
-import { approvalPostBodySchema } from "./types";
+import {
+  accessCodeParamsSchema,
+  approvalPostBodySchema,
+  commentPostBodySchema,
+} from "./types";
 import { message, printWebhookReceived } from "./utility";
 import {
+  parseDateInString,
   parseLineItemModifications,
   parseWebhookRequest,
   parseWooCommerceOrderJson,
@@ -315,6 +321,46 @@ app.post(
       if (error instanceof AppError) {
         return res.status(error.statusCode).send(message(error.message));
       }
+    }
+  }
+);
+
+app.post(
+  "/workflow/:accessCode/comments",
+  validateRequest({
+    body: commentPostBodySchema,
+    params: accessCodeParamsSchema,
+  }),
+  async (req, res) => {
+    try {
+      const { dateCreated, text, approvalStatus } = req.body;
+      const parsedDate = parseDateInString(dateCreated); //parsing here because zod middleware would not accept the dateInString schema
+
+      const existingAccessCode = await prisma.accessCode.findFirst({
+        where: {
+          code: req.params.accessCode,
+        },
+      });
+      if (!existingAccessCode)
+        throw new AppError("Authentication", FORBIDDEN, "Invalid access code.");
+
+      const { orderId, userId } = existingAccessCode;
+      const createdComment = await createComment(
+        text,
+        userId,
+        orderId,
+        parsedDate,
+        approvalStatus
+      );
+      return res.status(OK).send(createdComment);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(BAD_REQUEST).send(error);
+      }
+      if (error instanceof AppError) {
+        return res.status(error.statusCode).send(message(error.message));
+      }
+      res.status(INTERNAL_SERVER_ERROR).send(message("Unknown error."));
     }
   }
 );

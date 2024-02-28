@@ -37,6 +37,16 @@ export const approvalPostBodySchema = z.object({
   accessCode: z.string(),
 });
 
+export const commentPostBodySchema = z.object({
+  approvalStatus: approvalStatusSchema.optional(),
+  dateCreated: z.string(),
+  text: z.string(),
+});
+
+export const accessCodeParamsSchema = z.object({
+  accessCode: z.string(),
+});
+
 export type WooCommerceOrderData = z.infer<typeof wooCommerceOrderDataSchema>;
 
 export type UserWithDbData = {

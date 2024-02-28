@@ -175,8 +175,8 @@ export async function createComment(
   text: string,
   userId: number,
   orderId: number,
-  approvalStatus: ApprovalStatus,
-  dateCreated: Date
+  dateCreated: Date,
+  approvalStatus?: ApprovalStatus
 ) {
   return await prisma.comment.create({
     data: {

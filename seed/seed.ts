@@ -100,8 +100,8 @@ async function createTestWorkflow(
         c.comment.text,
         c.id,
         order.id,
-        c.comment.approvalStatus,
-        new Date()
+        new Date(),
+        c.comment.approvalStatus
       );
     }
   }

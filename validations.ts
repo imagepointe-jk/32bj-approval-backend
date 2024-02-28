@@ -159,3 +159,7 @@ export function parseWordpressImageSearchResults(json: any) {
     .array(z.object({ guid: z.object({ rendered: z.string() }) }))
     .parse(json);
 }
+
+export function parseDateInString(str: string) {
+  return dateInString.parse(str);
+}
