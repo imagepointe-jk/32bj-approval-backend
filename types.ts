@@ -34,7 +34,6 @@ export const webhookRequestSchema = z.object({
 
 export const approvalPostBodySchema = z.object({
   approvalStatus: approvalStatusSchema,
-  accessCode: z.string(),
 });
 
 export const commentPostBodySchema = z.object({

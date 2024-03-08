@@ -196,10 +196,14 @@ app.post("/", async (req, res) => {
 });
 
 app.post(
-  "/approval",
-  validateRequest({ body: approvalPostBodySchema }),
+  "/workflow/:accessCode/approval",
+  validateRequest({
+    body: approvalPostBodySchema,
+    params: accessCodeParamsSchema,
+  }),
   async (req, res) => {
-    const { accessCode, approvalStatus } = req.body;
+    const { approvalStatus } = req.body;
+    const { accessCode } = req.params;
     try {
       const existingAccessCode = await prisma.accessCode.findFirst({
         where: {
