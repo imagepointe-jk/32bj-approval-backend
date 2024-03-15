@@ -15,6 +15,7 @@ import {
   parseApprovalStatus,
   parseRole,
 } from "./validations";
+import { Comment } from "@prisma/client";
 
 //get relevant data from OUR db (not WooCommerce) related to an access code
 export async function getDataForAccessCode(
@@ -201,6 +202,54 @@ export async function createApproval(
       approvalStatus,
     },
   });
+}
+
+export async function upsertApprovalWithOptionalComment(
+  userId: number,
+  orderId: number,
+  approvalStatus: ApprovalStatus,
+  comment?: string
+) {
+  const [createdOrUpdatedApproval, createdComment] = await prisma.$transaction(
+    async (tx) => {
+      const createdOrUpdatedApproval = await tx.userApproval.upsert({
+        where: {
+          userId_orderId: {
+            userId,
+            orderId,
+          },
+        },
+        create: {
+          userId,
+          orderId,
+          approvalStatus,
+        },
+        update: {
+          approvalStatus,
+        },
+      });
+
+      let createdComment: Comment | undefined;
+      if (comment) {
+        createdComment = await tx.comment.create({
+          data: {
+            userId,
+            orderId,
+            text: comment,
+            dateCreated: new Date(),
+            approvalStatus,
+          },
+        });
+      }
+
+      return [createdOrUpdatedApproval, createdComment];
+    }
+  );
+
+  return {
+    createdOrUpdatedApproval,
+    createdComment,
+  };
 }
 
 export async function createRole(userId: number, orderId: number, role: Role) {

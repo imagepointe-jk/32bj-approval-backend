@@ -53,12 +53,14 @@ model AccessCode {
 }
 
 model UserApproval {
-  id             Int    @id @default(autoincrement())
+  id             Int    @default(autoincrement())
   user           User   @relation(fields: [userId], references: [id])
   userId         Int
   order          Order  @relation(fields: [orderId], references: [id])
   orderId        Int
   approvalStatus String
+
+  @@id([userId, orderId])
 }
 
 model UserRole {

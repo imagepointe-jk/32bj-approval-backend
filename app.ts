@@ -18,6 +18,7 @@ import {
   createRole,
   createUser,
   getDataForAccessCode,
+  upsertApprovalWithOptionalComment,
 } from "./dbLogic";
 import { AppError } from "./error";
 import {
@@ -40,7 +41,6 @@ import {
 } from "./types";
 import { message, printWebhookReceived } from "./utility";
 import {
-  parseDateInString,
   parseLineItemModifications,
   parseWebhookRequest,
   parseWooCommerceOrderJson,
@@ -202,7 +202,7 @@ app.post(
     params: accessCodeParamsSchema,
   }),
   async (req, res) => {
-    const { approvalStatus } = req.body;
+    const { approvalStatus, comment } = req.body;
     const { accessCode } = req.params;
     try {
       const existingAccessCode = await prisma.accessCode.findFirst({
@@ -215,40 +215,14 @@ app.post(
         throw new AppError("Authentication", FORBIDDEN, "Invalid access code.");
       const { userId, orderId } = existingAccessCode;
 
-      const existingApprovalStatus = await prisma.userApproval.findFirst({
-        where: {
-          userId,
-          orderId,
-        },
-      });
-      //if an approval status entry for this user on this order doesn't exist yet, create one
-      if (!existingApprovalStatus) {
-        const newApprovalStatus = await prisma.userApproval.create({
-          data: {
-            userId,
-            orderId,
-            approvalStatus,
-          },
-        });
-        console.log(
-          `Created a new approval status "${approvalStatus}" for user ${userId} on order ${orderId}`
-        );
-        return res.status(OK).send(newApprovalStatus);
-      } else {
-        //if an approval status entry for this user on this order DOES exist already, update it
-        const updatedApprovalStatus = await prisma.userApproval.update({
-          where: {
-            id: existingApprovalStatus.id,
-          },
-          data: {
-            approvalStatus,
-          },
-        });
-        console.log(
-          `Updated approval status to "${approvalStatus}" for user ${userId} on order ${orderId}`
-        );
-        return res.status(OK).send(updatedApprovalStatus);
-      }
+      const result = await upsertApprovalWithOptionalComment(
+        userId,
+        orderId,
+        approvalStatus,
+        comment
+      );
+
+      return res.status(OK).send(result);
     } catch (error) {
       if (error instanceof AppError) {
         return res.status(error.statusCode).send(message(error.message));
@@ -337,8 +311,7 @@ app.post(
   }),
   async (req, res) => {
     try {
-      const { dateCreated, text, approvalStatus } = req.body;
-      const parsedDate = parseDateInString(dateCreated); //parsing here because zod middleware would not accept the dateInString schema
+      const { text } = req.body;
 
       const existingAccessCode = await prisma.accessCode.findFirst({
         where: {
@@ -353,8 +326,7 @@ app.post(
         text,
         userId,
         orderId,
-        parsedDate,
-        approvalStatus
+        new Date()
       );
       return res.status(OK).send(createdComment);
     } catch (error) {

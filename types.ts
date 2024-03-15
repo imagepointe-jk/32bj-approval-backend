@@ -34,11 +34,10 @@ export const webhookRequestSchema = z.object({
 
 export const approvalPostBodySchema = z.object({
   approvalStatus: approvalStatusSchema,
+  comment: z.string().optional(),
 });
 
 export const commentPostBodySchema = z.object({
-  approvalStatus: approvalStatusSchema.optional(),
-  dateCreated: z.string(),
   text: z.string(),
 });
 
